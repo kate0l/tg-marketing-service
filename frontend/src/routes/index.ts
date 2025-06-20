@@ -1,3 +1,3 @@
-// import routes, { renderRoutes } from './routes';
+import routes, { renderRoutes } from './routes';
 
-// export { routes, renderRoutes };
+export { routes, renderRoutes };
