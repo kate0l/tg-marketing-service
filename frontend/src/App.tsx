@@ -1,13 +1,14 @@
 import React from 'react';
 import { BrowserRouter as Router, Routes } from 'react-router-dom';
 import Layout from './components/Layout/Layout';
-// import { renderRoutes } from './routes';
+import { renderRoutes } from './routes';
 
 const App: React.FC = () => {
   return (
     <Router>
       <Layout>
         <Routes>
+          {renderRoutes()}
         </Routes>
       </Layout>
     </Router>
