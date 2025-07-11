@@ -4,6 +4,7 @@ from django.urls import reverse
 from django.views.generic.base import View
 
 from .models import User
+from .forms import UserLoginForm
 
 
 class LogoutView(View):
@@ -21,6 +22,28 @@ class LogoutView(View):
         return redirect(reverse('main_index'))
     
     
+class LogoutView(View):
+    def get(self, request, *args, **kwargs):
+        form = UserLoginForm()
+        return render(
+            request,
+            'login.html',
+            {'form': form}
+        )
+        
+    def post(self, request, *args, **kwargs):
+        form = UserLoginForm(data=request.POST)
+        if form.is_valid():
+            username = request.POST['username']
+            password = request.POST['password']
+            user = auth.authenticate(username=username, password=password)
+            if user:
+                auth.login(request, user)
+                messages.add_message(request, messages.SUCCESS, 'Вы залогинены')
+                return redirect(reverse('main_index'))
+        return render(request, 'login.html', {'form': form})
+   
+
 class UserProfileView(View):
     def get(self, request, *args, **kwargs):
         if not request.user.is_authenticated:
