@@ -22,7 +22,7 @@ class LogoutView(View):
         return redirect(reverse('main_index'))
     
     
-class LogoutView(View):
+class LoginView(View):
     def get(self, request, *args, **kwargs):
         form = UserLoginForm()
         return render(
@@ -57,3 +57,7 @@ class UserProfileView(View):
             'users/profile.html',
             {'user': user}
         )
+        
+
+class CreateUserView(View):
+    ...

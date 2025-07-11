@@ -5,7 +5,7 @@
 
 <div class="container wrapper flex-grow-1">
     <h1 class="my-4">Вход</h1>
-    <form action="{% url 'login' %}" method="post">
+    <form action="{% url 'users:login' %}" method="post">
         {% csrf_token %}
         {% comment %} {% for item in form %}
         <div class="mb-3">
@@ -43,7 +43,7 @@
     <div class="container d-flex justify-content-center align-items-center wrapper mt-3">
         <div>
             <span class="fw-bolder">или </span>
-            <a href="{% url "user_create" %}" class="fw-bolder">зарегистрируйтесь</a>
+            <a href="{% url "users:user_create" %}" class="fw-bolder">зарегистрируйтесь</a>
         </div>
     </div>
 </div>
