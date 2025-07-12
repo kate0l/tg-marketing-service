@@ -7,6 +7,7 @@ class User(AbstractUser):
     avatar_image = models.URLField(verbose_name='url_изображения_профиля')
     role = models.CharField(verbose_name='роль',
                             max_length=150)
+    telegram = models.CharField(verbose_name='телеграм', unique=True, blank=True)
     class Meta:
         db_table = 'users'
         verbose_name = 'Пользователя'
