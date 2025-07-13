@@ -4,10 +4,11 @@ from django.contrib.auth.models import AbstractUser
 
 # Create your models here.
 class User(AbstractUser):
-    avatar_image = models.URLField(verbose_name='url_изображения_профиля')
+    avatar_image = models.URLField(verbose_name='url изображения профиля')
     role = models.CharField(verbose_name='роль',
                             max_length=150)
     telegram = models.CharField(verbose_name='телеграм', unique=True, blank=True)
+    bio = models.CharField(max_length=200, verbose_name='о себе', blank=True)
     class Meta:
         db_table = 'users'
         verbose_name = 'Пользователя'

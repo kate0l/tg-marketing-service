@@ -52,6 +52,7 @@ INSTALLED_APPS = [
     'allauth.socialaccount.providers.yandex',
     'config',
     'config.users',
+    'config.group_channels',
 ]
 
 AUTHENTICATION_BACKENDS = [
