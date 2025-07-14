@@ -4,7 +4,7 @@ from django.urls import reverse
 from django.views.generic.base import View
 
 from .models import User
-from .forms import UserLoginForm
+from .forms import UserLoginForm, UserRegForm, UserUpdateForm
 
 from config.group_channels.forms import CreateGroupForm, UpdateGroupForm
 
@@ -67,5 +67,63 @@ class UserProfileView(View):
         )
         
 
-class CreateUserView(View):
-    ...
+class UserRegister(View):
+    def post(self, request, *args, **kwargs):
+        form = UserRegForm(data=request.POST)
+        if form.is_valid():
+            form.save()
+            messages.add_message(request,
+                                 messages.SUCCESS,
+                                 'Пользователь успешно зарегистрирован')
+            return redirect(reverse('users:login'))
+        return render(request, 'users/register.html', {'form': form})
+    
+    def get(self, request, *args, **kwargs):
+        form = UserRegForm()
+        return render(
+            request,
+            'users/register.html',
+            {'form': form}
+        )
+        
+
+class UserUpdate(View):
+    def get(self, request, *args, **kwargs):
+        if not request.user.is_authenticated:
+            messages.add_message(request,
+                                 messages.ERROR,
+                            'Вы не авторизованы! Пожалуйста, выполните вход.')
+            return redirect(reverse('login'))
+        if request.user.id == kwargs.get('id'):
+            form = UserUpdateForm(initial={
+                'username': request.user.username,
+                'first_name': request.user.first_name,
+                'last_name': request.user.last_name,
+            })
+            return render(
+                request,
+                'users/update.html',
+                {'form': form,
+                 'id': request.user.id
+                }
+            )
+        messages.add_message(request,
+                             messages.ERROR,
+                        'У вас нет прав для изменения другого пользователя.')
+        return redirect(reverse('all_users'))
+    
+    def post(self, request, *args, **kwargs):
+        user_id = kwargs.get('id')
+        user = User.objects.get(id=user_id)
+        form = UserUpdateForm(data=request.POST, instance=user)
+        if form.is_valid():
+            form.save()
+            messages.add_message(request,
+                                 messages.SUCCESS,
+                                 'Пользователь успешно изменен')
+            return redirect(reverse('all_users'))
+        return render(
+            request,
+            'users/update.html',
+            {'form': form}
+        )
