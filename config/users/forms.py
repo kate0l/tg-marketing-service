@@ -86,6 +86,7 @@ class UserRegForm(UserCreationForm):
         )
     )
     avatar_image = forms.CharField(
+        required=False,
         label='URL аватара',
         widget=forms.TextInput(attrs={'name': 'avatar_image',
                                       'class': 'form-control'})
@@ -100,6 +101,9 @@ class UserUpdateForm(UserChangeForm):
             'username',
             'password1',
             'password2',
+            'email',
+            'bio',
+            'avatar_image',
         )
     first_name = forms.CharField(
         label='Имя',
@@ -116,7 +120,7 @@ class UserUpdateForm(UserChangeForm):
         widget=forms.TextInput(attrs={"autofocus": True,
                                       'class': 'form-control',
                                       'placeholder': 'Имя пользователя'})
-    ) 
+    )
     password1 = forms.CharField(
         label='Пароль',
         widget=forms.PasswordInput(attrs={'class': 'form-control',
@@ -127,4 +131,20 @@ class UserUpdateForm(UserChangeForm):
         widget=forms.PasswordInput(attrs={"autocomplete": "current-password",
                                       'class': 'form-control',
                                       'placeholder': 'Подтверждение пароля'})
+    )
+    email =  forms.CharField(
+        label='Email',
+        widget=forms.EmailInput(attrs={'class': 'form-control',
+                                      'placeholder': 'Email'}))
+    bio =  forms.CharField(
+        required=False,
+        label='Email',
+        widget=forms.Textarea(attrs={'class': 'form-control',
+                                      'placeholder': 'О себе',
+                                      'rows': 3}))
+    avatar_image = forms.CharField(
+        required=False,
+        label='URL аватара',
+        widget=forms.TextInput(attrs={'name': 'avatar_image',
+                                      'class': 'form-control'})
     )

@@ -94,34 +94,37 @@ class UserUpdate(View):
                                  messages.ERROR,
                             'Вы не авторизованы! Пожалуйста, выполните вход.')
             return redirect(reverse('login'))
-        if request.user.id == kwargs.get('id'):
+        if request.user.username == kwargs.get('username'):
             form = UserUpdateForm(initial={
                 'username': request.user.username,
                 'first_name': request.user.first_name,
                 'last_name': request.user.last_name,
+                'avatar_image': request.user.avatar_image,
+                'email': request.user.email,
+                'bio': request.user.bio,
             })
             return render(
                 request,
                 'users/update.html',
                 {'form': form,
-                 'id': request.user.id
+                 'username': request.user.username
                 }
             )
         messages.add_message(request,
                              messages.ERROR,
                         'У вас нет прав для изменения другого пользователя.')
-        return redirect(reverse('all_users'))
+        return redirect(reverse('users:profile'))
     
     def post(self, request, *args, **kwargs):
-        user_id = kwargs.get('id')
-        user = User.objects.get(id=user_id)
+        username = kwargs.get('username')
+        user = User.objects.get(username=username)
         form = UserUpdateForm(data=request.POST, instance=user)
         if form.is_valid():
             form.save()
             messages.add_message(request,
                                  messages.SUCCESS,
-                                 'Пользователь успешно изменен')
-            return redirect(reverse('all_users'))
+                                 'Профиль успешно изменен')
+            return redirect(reverse('users:profile'))
         return render(
             request,
             'users/update.html',
