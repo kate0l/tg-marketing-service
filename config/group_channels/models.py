@@ -19,12 +19,12 @@ class Group(models.Model):
     #     related_name='group_channels',
     #     blank=True,
     # )
-    image_url = models.URLField(verbose_name='обложка группы')
+    image_url = models.CharField(verbose_name='обложка группы')
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
         db_table = 'groups'
-        verbose_name = 'Группы'
+        verbose_name = 'Группа'
         verbose_name_plural = 'Группы'
     
     def __str__(self):

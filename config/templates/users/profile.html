@@ -74,10 +74,37 @@
         <!-- Блок интересов -->
         <div class="row mb-4">
             <div class="col-12">
-                <h2 class="mb-4">Мои интересы</h2>
+                <h2 class="mb-4">Мои группы каналов</h2>
                 
                 <div class="row g-4">
                     <!-- Примеры карточек интересов -->
+                     {% for group in groups %}
+                     
+                     <div class="col-md-4 col-sm-6">
+                        <div class="card interest-card">
+                            <a class=" text-decoration-none" href="/"><img src="{{ group.image_url }}" class="card-img-top" alt="{{ group.name }}"></a>
+                            <div class="card-body">
+                                <h5 class="card-title">{{ group.name }}</h5>
+                                <p class="card-text">{{ group.description }}</p>
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <small class="text-muted"></small>
+                                    <div>
+                                         <button class="btn btn-sm btn-outline-danger" data-bs-toggle="modal" data-bs-target="#deleteInterestModal" data-interest="{{ group.name }}">
+                                            <i class="fas fa-trash"></i>
+                                        </button>
+                                        <button class="btn btn-sm btn-outline-secondary" data-bs-toggle="modal" data-bs-target="#editInterestModal" 
+                                                data-name="{{ group.name }}" 
+                                                data-desc="{{ group.description }}" 
+                                                data-img="{{ group.image_url }}">
+                                            <i class="fas fa-edit"></i>
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                     
+                     {% endfor %}
                     <div class="col-md-4 col-sm-6">
                         <div class="card interest-card">
                             <a class=" text-decoration-none" href="/"><img src="data:image/jpeg;base64,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" class="card-img-top" alt="Программирование"></a>
@@ -143,7 +170,7 @@
                         <div class="card add-interest" data-bs-toggle="modal" data-bs-target="#addInterestModal">
                             <div class="text-center p-4">
                                 <i class="fas fa-plus fa-3x text-muted mb-3"></i>
-                                <h5>Добавить интерес</h5>
+                                <h5>Добавить группу</h5>
                             </div>
                         </div>
                     </div>
@@ -157,30 +184,29 @@
         <div class="modal-dialog">
             <div class="modal-content">
                 <div class="modal-header">
-                    <h5 class="modal-title" id="addInterestModalLabel">Добавить новый интерес</h5>
+                    <h5 class="modal-title" id="addInterestModalLabel">Добавить новую группу</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <div class="modal-body">
-                    <form id="interestForm">
+                    <form action="{% url 'group_channels:group_create' %}" method="post" id="interestForm">
+                        {% csrf_token %}
                         <div class="mb-3">
-                            <label for="interestName" class="form-label">Название интереса</label>
-                            <input type="text" class="form-control" id="interestName" required>
+                            <label for="groupName" class="form-label">Название группы</label>
+                            {{ create_form.name }}
                         </div>
                         <div class="mb-3">
-                            <label for="interestDescription" class="form-label">Описание</label>
-                            <textarea class="form-control" id="interestDescription" rows="3"></textarea>
+                            <label for="groupDescription" class="form-label">Описание</label>
+                            {{ create_form.description }}
                         </div>
                         <div class="mb-3">
-                            <label for="interestImage" class="form-label">Изображение (URL)</label>
-                            <input type="url" class="form-control" id="interestImage" placeholder="https://example.com/image.jpg">
+                            <label for="groupImage" class="form-label">Изображение (URL)</label>
+                            {{ create_form.image_url }}
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
+                            <input type="submit" class="btn btn-primary" id="saveInterest" value="Сохранить">
                         </div>
                     </form>
-                </div>
-                <div class="modal-footer">
-
-
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
-                    <button type="button" class="btn btn-primary" id="saveInterest">Сохранить</button>
                 </div>
             </div>
         </div>
@@ -191,28 +217,29 @@
         <div class="modal-dialog">
             <div class="modal-content">
                 <div class="modal-header">
-                    <h5 class="modal-title" id="editInterestModalLabel">Редактировать интерес</h5>
+                    <h5 class="modal-title" id="editInterestModalLabel">Редактировать группу</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <div class="modal-body">
-                    <form id="editInterestForm">
+                    <form id="editInterestForm" method="post" action="">
+                        {% csrf_token %}
                         <div class="mb-3">
-                            <label for="editInterestName" class="form-label">Название интереса</label>
-                            <input type="text" class="form-control" id="editInterestName" required>
+                            <label for="editGroupName" class="form-label">Название группы</label>
+                            {{ update_form.name }}
                         </div>
                         <div class="mb-3">
-                            <label for="editInterestDescription" class="form-label">Описание</label>
-                            <textarea class="form-control" id="editInterestDescription" rows="3"></textarea>
+                            <label for="editGroupDescription" class="form-label">Описание</label>
+                            {{ update_form.description }}
                         </div>
                         <div class="mb-3">
-                            <label for="editInterestImage" class="form-label">Изображение (URL)</label>
-                            <input type="url" class="form-control" id="editInterestImage" placeholder="https://example.com/image.jpg">
+                            <label for="editGroupImage" class="form-label">Изображение (URL)</label>
+                            {{ update_form.image_url }}
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
+                            <input type="submit" class="btn btn-primary" id="updateInterest" value="Обновить">
                         </div>
                     </form>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
-                    <button type="button" class="btn btn-primary" id="updateInterest">Обновить</button>
                 </div>
             </div>
         </div>
@@ -223,16 +250,19 @@
         <div class="modal-dialog">
             <div class="modal-content">
                 <div class="modal-header">
-                    <h5 class="modal-title" id="deleteInterestModalLabel">Удаление интереса</h5>
+                    <h5 class="modal-title" id="deleteInterestModalLabel">Удаление группы</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <div class="modal-body">
-                    <p>Вы действительно хотите удалить интерес "<span id="interestToDelete"></span>"?</p>
+                    <p>Вы действительно хотите удалить группу "<span id="interestToDelete"></span>"?</p>
                     <p class="text-danger">Это действие нельзя будет отменить.</p>
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
-                    <button type="button" class="btn btn-danger" id="confirmDelete">Удалить</button>
+                    <form id="deleteInterestForm" method="post" action="">
+                        {% csrf_token %}
+                        <input type="submit" class="btn btn-danger" id="confirmDelete" value="Удалить">
+                    </form>
                 </div>
             </div>
         </div>
@@ -240,6 +270,34 @@
 
     <!-- Bootstrap JS и зависимости -->
     <script>
+        // Обработчик для кнопки редактирования интереса
+            const editModal = document.getElementById('editInterestModal');
+        editModal.addEventListener('show.bs.modal', function(event) {
+            const button = event.relatedTarget;
+            const name = button.getAttribute('data-name');
+            const desc = button.getAttribute('data-desc');
+            const img = button.getAttribute('data-img');
+            
+            document.getElementById('editGroupName').value = name;
+            document.getElementById('editGroupDescription').value = desc;
+            document.getElementById('editGroupImage').value = img;
+            
+            // Устанавливаем action формы
+            const form = document.getElementById('editInterestForm');
+            form.action = "{% url 'group_channels:group_update' 'PLACEHOLDER' %}".replace('PLACEHOLDER', encodeURIComponent(name));
+        });
+
+             // Обработчик для модального окна удаления
+            const deleteModal = document.getElementById('deleteInterestModal');
+        deleteModal.addEventListener('show.bs.modal', function(event) {
+            const button = event.relatedTarget;
+            const interestName = button.getAttribute('data-interest');
+            document.getElementById('interestToDelete').textContent = interestName;
+
+            // Устанавливаем action формы
+            const form = document.getElementById('deleteInterestForm');
+            form.action = "{% url 'group_channels:group_delete' 'PLACEHOLDER' %}".replace('PLACEHOLDER', encodeURIComponent(interestName));
+        });
         // Пример JavaScript для добавления нового интереса
         document.getElementById('saveInterest').addEventListener('click', function() {
             const name = document.getElementById('interestName').value;

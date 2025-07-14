@@ -6,6 +6,8 @@ from django.views.generic.base import View
 from .models import User
 from .forms import UserLoginForm
 
+from config.group_channels.forms import CreateGroupForm, UpdateGroupForm
+
 
 class LogoutView(View):
     def get(self, request, *args, **kwargs):
@@ -51,11 +53,17 @@ class UserProfileView(View):
                                  messages.ERROR,
                             'Вы не авторизованы! Пожалуйста, выполните вход.')
             return redirect(reverse('login'))
+        create_form = CreateGroupForm()
+        update_form = UpdateGroupForm()
         user = request.user
+        groups = user.user_group.all()
         return render(
             request,
             'users/profile.html',
-            {'user': user}
+            {'user': user,
+             'create_form': create_form,
+             'update_form': update_form,
+             'groups': groups}
         )
         
 
