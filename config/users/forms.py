@@ -148,3 +148,17 @@ class UserUpdateForm(UserChangeForm):
         widget=forms.TextInput(attrs={'name': 'avatar_image',
                                       'class': 'form-control'})
     )
+    
+    
+class AvatarChange(UserChangeForm):
+    class Meta:
+        model = User
+        fields = ('avatar_image',)
+    avatar_image = forms.CharField(
+        required=False,
+        label='URL аватара',
+        widget=forms.TextInput(attrs={'id':'avatarUrl',
+                                      'name': 'avatar_image',
+                                      'class': 'form-control',
+                                      'placeholder': 'https://example.com/avatar.jpg'})
+    )
