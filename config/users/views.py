@@ -1,17 +1,17 @@
-from django.contrib import messages, auth
+from django.contrib import auth, messages
 from django.shortcuts import redirect, render
 from django.urls import reverse
 from django.views.generic.base import View
 
-from .models import User
+from config.group_channels.forms import CreateGroupForm, UpdateGroupForm
+
 from .forms import (
+    AvatarChange,
     UserLoginForm,
     UserRegForm,
     UserUpdateForm,
-    AvatarChange,
 )
-
-from config.group_channels.forms import CreateGroupForm, UpdateGroupForm
+from .models import User
 
 
 class LogoutView(View):
