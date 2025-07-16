@@ -177,3 +177,13 @@ STATIC_URL = 'static/'
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 AUTH_USER_MODEL = 'users.User'
+
+# Email settings for development - emails will be printed to console
+EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
+
+
+if os.getenv('PROD') == 't':
+    # ALLOWED_HOSTS = ['example.com']
+    ...
+else:
+    ALLOWED_HOSTS = ['127.0.0.1', 'localhost']

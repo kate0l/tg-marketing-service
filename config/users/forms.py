@@ -3,6 +3,7 @@ from django.contrib.auth.forms import (
     AuthenticationForm,
     UserChangeForm,
     UserCreationForm,
+    PasswordResetForm,
 )
 
 from .models import User
@@ -162,4 +163,11 @@ class AvatarChange(UserChangeForm):
                                       'name': 'avatar_image',
                                       'class': 'form-control',
                                       'placeholder': 'https://example.com/avatar.jpg'})
+    )
+
+class RestorePasswordRequestForm(PasswordResetForm):
+    email = forms.EmailField(
+        label='Email',
+        widget=forms.EmailInput(attrs={'class': 'form-control',
+                                       'placeholder': 'Пожалуйста, введите ваш email'})
     )

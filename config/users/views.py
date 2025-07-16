@@ -10,6 +10,7 @@ from .forms import (
     UserLoginForm,
     UserRegForm,
     UserUpdateForm,
+    RestorePasswordRequestForm,
 )
 from .models import User
 
@@ -224,3 +225,39 @@ class AvatarChangeView(View):
                                  messages.ERROR,
                                  avatar_url[1:])
         return redirect(reverse('users:profile'))
+    
+
+class RestorePasswordRequestView(View):
+    def get(self, request, *args, **kwargs):
+        form = RestorePasswordRequestForm()
+        return render(
+            request,
+            'users/restore-password-request.html',
+            {'form': form}
+        )
+
+    def post(self, request, *args, **kwargs):
+        form = RestorePasswordRequestForm(data=request.POST)
+        if form.is_valid():
+            form.save(request=request,
+                      use_https=request.is_secure(),
+                      email_template_name='emails/restore-password-email.html',
+            )
+            messages.add_message(request,
+                                 messages.SUCCESS,
+                                 'Ссылка на восстановление пароля \
+                                    отправлена на указанный вами Email'
+            )
+            return redirect('users:login') # redirect already uses reverse
+        
+        messages.add_message(request,
+                             messages.ERROR,
+                             'Пожалуйста, введите корректный Email'
+        )
+        return render(request,
+                      'users/restore-password-request.html',
+                      {'form': form}
+        )
+
+class RestorePasswordView(View):
+    ...
