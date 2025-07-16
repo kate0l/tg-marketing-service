@@ -30,8 +30,8 @@ TELEGRAM_SESSION_STRING = os.getenv('TELEGRAM_SESSION_STRING')
 # Проверка наличия обязательных настроек Telegram
 if not TELEGRAM_API_ID or not TELEGRAM_API_HASH or not TELEGRAM_SESSION_STRING:
     raise ImproperlyConfigured(
-        "Telegram API credentials are missing. "
-        "Please set TELEGRAM_API_ID, TELEGRAM_API_HASH and TELEGRAM_SESSION_STRING in .env file"
+        "Нет конфигурации для Telegram API. "
+        "Установи TELEGRAM_API_ID, TELEGRAM_API_HASH, TELEGRAM_SESSION_STRING"
     )
 
 # Quick-start development settings - unsuitable for production

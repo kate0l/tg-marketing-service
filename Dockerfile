@@ -9,6 +9,4 @@ COPY . .
 
 RUN uv sync
 
-RUN make migrate
-
-CMD ["make", "prod-run"]
+CMD ["sh", "-c", "uv run python manage.py migrate && make render-start"]
