@@ -22,7 +22,7 @@ SPA веб-приложение. Единый портал для сравнен
 
 - Python
 - Django
-- Docker GitHub Actions
+- Docker 
 - GitHub Actions
 - см. другие зависимости в [`package.json`](package.json)
 
