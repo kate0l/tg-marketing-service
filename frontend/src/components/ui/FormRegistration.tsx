@@ -1,6 +1,6 @@
 import React from 'react';
 import { useState } from 'react';
-import PasswordRecovery from '../components/modals/PasswordRecovery';
+import PasswordRecovery from '../modals/PasswordRecovery';
 import { useForm } from "react-hook-form";
 import axios from "axios";
 import { SocialIcon } from "react-social-icons";
