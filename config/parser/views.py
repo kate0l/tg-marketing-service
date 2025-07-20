@@ -121,10 +121,17 @@ class ParserView(FormView):
 
 
 class ParserListView(ListView):
-    model = TelegramChannel
-    template_name = 'parser/channels_list.html'
-    context_object_name = 'channels'
-    ordering = ['-parsed_at']
+    def get(self, request, *args, **kwargs):
+        channels = TelegramChannel.objects.all().order_by('-parsed_at')
+        return render(
+            request,
+            'parser/channels_list.html',
+            {'channels': channels}
+        )
+    # model = TelegramChannel
+    # template_name = 'parser/channels_list.html'
+    # context_object_name = 'channels'
+    # ordering = ['-parsed_at']
 
 
 class ParserDetailView(DetailView):

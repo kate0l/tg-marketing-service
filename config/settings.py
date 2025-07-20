@@ -94,6 +94,29 @@ MIDDLEWARE = [
     'allauth.account.middleware.AccountMiddleware',
 ]
 
+MAPPING_PROD = {
+    't':'http://localhost:8000/accounts/yandex/login/callback/',
+    'f':'https://tg-stats.onrender.com/accounts/yandex/login/callback/'
+}
+
+SOCIALACCOUNT_PROVIDERS = {
+    'yandex': {
+        'APP': {
+            'client_id': os.getenv('CLIENT_ID'),
+            'secret': os.getenv('SECKET_ID_YA'),
+            'redirect_uri': MAPPING_PROD.get(os.getenv('PROD')), 
+        },
+        'SCOPE': [
+            'login:email',    # Доступ к email
+            'login:info',     # Основная информация (имя, фамилия)
+            'login:avatar',   # Аватар пользователя
+        ],
+        'AUTH_PARAMS': {
+            'force_confirm': True,  # Всегда запрашивать подтверждение прав
+        }
+    }
+}
+
 ROOT_URLCONF = 'config.urls'
 
 TEMPLATES = [
