@@ -11,7 +11,7 @@ https://docs.djangoproject.com/en/5.2/ref/settings/
 """
 
 from pathlib import Path
-from .logging import LOGGING
+from .mylogging import LOGGING
 import os
 
 from django.core.exceptions import ImproperlyConfigured
@@ -95,15 +95,15 @@ MIDDLEWARE = [
 ]
 
 MAPPING_PROD = {
-    't':'http://localhost:8000/accounts/yandex/login/callback/',
-    'f':'https://tg-stats.onrender.com/accounts/yandex/login/callback/'
+    'f':'https://localhost:8000/accounts/yandex/login/callback/',
+    't':'https://hexlet-price-tracker-8znh.onrender.com/accounts/yandex/login/callback/'
 }
 
 SOCIALACCOUNT_PROVIDERS = {
     'yandex': {
         'APP': {
-            'client_id': os.getenv('CLIENT_ID'),
-            'secret': os.getenv('SECKET_ID_YA'),
+            'secret': os.getenv('SECRET_ID_YA'),
+            'client_id': os.getenv('CLIENT_ID_YA'),
             'redirect_uri': MAPPING_PROD.get(os.getenv('PROD')), 
         },
         'SCOPE': [

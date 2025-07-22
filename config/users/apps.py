@@ -17,4 +17,3 @@ class UsersConfig(AppConfig):
                 user.email = extra_data.get('default_email', '')
                 user.first_name = extra_data.get('first_name', '')
                 user.last_name = extra_data.get('last_name', '')
-
