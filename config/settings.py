@@ -107,7 +107,7 @@ SOCIALACCOUNT_PROVIDERS = {
             'redirect_uri': MAPPING_PROD.get(os.getenv('PROD')), 
         },
         'SCOPE': [
-            'login:email',    # Доступ к email
+            'login:email',   # Доступ к email
             'login:info',     # Основная информация (имя, фамилия)
             'login:avatar',   # Аватар пользователя
         ],
