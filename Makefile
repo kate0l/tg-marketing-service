@@ -1,10 +1,8 @@
 PORT ?= 8000
-migrate:	
+migrate:
+	uv run python manage.py collectstatic --noinput
 	uv run python manage.py makemigrations
 	uv run python manage.py migrate
-
-collectstatic:
-	uv run python manage.py collectstatic --noinput
 
 dev:
 	uv run python manage.py runserver
