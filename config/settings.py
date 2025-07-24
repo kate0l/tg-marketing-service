@@ -11,7 +11,7 @@ https://docs.djangoproject.com/en/5.2/ref/settings/
 """
 
 from pathlib import Path
-from .logging import LOGGING
+from .mylogging import LOGGING
 import os
 
 from django.core.exceptions import ImproperlyConfigured
@@ -93,6 +93,29 @@ MIDDLEWARE = [
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
     'allauth.account.middleware.AccountMiddleware',
 ]
+
+MAPPING_PROD = {
+    'f':'https://localhost:8000/accounts/yandex/login/callback/',
+    't':'https://hexlet-price-tracker-8znh.onrender.com/accounts/yandex/login/callback/'
+}
+
+SOCIALACCOUNT_PROVIDERS = {
+    'yandex': {
+        'APP': {
+            'secret': os.getenv('SECRET_ID_YA'),
+            'client_id': os.getenv('CLIENT_ID_YA'),
+            'redirect_uri': MAPPING_PROD.get(os.getenv('PROD')), 
+        },
+        'SCOPE': [
+            'login:email',    # Доступ к email
+            'login:info',     # Основная информация (имя, фамилия)
+            'login:avatar',   # Аватар пользователя
+        ],
+        'AUTH_PARAMS': {
+            'force_confirm': True,  # Всегда запрашивать подтверждение прав
+        }
+    }
+}
 
 ROOT_URLCONF = 'config.urls'
 
