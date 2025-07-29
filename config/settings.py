@@ -11,7 +11,7 @@ https://docs.djangoproject.com/en/5.2/ref/settings/
 """
 
 from pathlib import Path
-from .mylogging import LOGGING
+from .logging import LOGGING
 import os
 
 from django.core.exceptions import ImproperlyConfigured
@@ -93,6 +93,7 @@ MIDDLEWARE = [
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
     'allauth.account.middleware.AccountMiddleware',
 ]
+
 
 MAPPING_PROD = {
     'f':'https://localhost:8000/accounts/yandex/login/callback/',
