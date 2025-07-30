@@ -58,6 +58,7 @@
                     <ul class="dropdown-menu dropdown-menu-end"
                         aria-labelledby="dropdownMenuButton">
                         {% if user_role == 'user' %}
+                            <li><a class="dropdown-item" href="{% url 'users:profile' %}">Мой профиль</a></li>
                             <li><a class="dropdown-item" >Личный кабинет пользователя</a></li>
                             <li><a class="dropdown-item" >Стать партнером</a></li>
                         {% elif user_role == 'partner' %}
