@@ -1,5 +1,7 @@
-from django.http import HttpResponseForbidden
 from functools import wraps
+
+from django.http import HttpResponseForbidden
+
 
 def role_required(allowed_roles):
     def decorator(view_func):
@@ -11,11 +13,14 @@ def role_required(allowed_roles):
         return _wrapped_view
     return decorator
 
+
 def guest_required(view_func):
     return role_required(['guest'])(view_func)
 
+
 def user_required(view_func):
     return role_required(['user', 'partner'])(view_func)
+
 
 def partner_required(view_func):
     return role_required(['partner'])(view_func)
