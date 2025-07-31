@@ -62,6 +62,7 @@
                             <li><a class="dropdown-item" >Личный кабинет пользователя</a></li>
                             <li><a class="dropdown-item" >Стать партнером</a></li>
                         {% elif user_role == 'partner' %}
+                            <li><a class="dropdown-item" href="{% url 'users:profile' %}">Мой профиль</a></li>
                             <li><a class="dropdown-item">Личный кабинет партнера</a></li>
                         {% endif %}
                         <li><hr class="dropdown-divider"></li>
