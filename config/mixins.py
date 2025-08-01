@@ -49,7 +49,7 @@ class GuestRequiredMixin(RoleRequiredMixin):
 
 class UserRequiredMixin(RoleRequiredMixin):
     """Для всех авторизованных пользователей"""
-    allowed_roles = ['user', 'partner']
+    allowed_roles = ['user', 'partner', 'channel_moderator']
     permission_denied_message = "Требуется авторизация"
 
 
@@ -64,6 +64,20 @@ class PartnerRequiredMixin(RoleRequiredMixin):
                 super()._test_role(request) and
                 hasattr(request.user, 'is_partner') and
                 request.user.is_partner
+        )
+
+
+class ChannelModeratorRequiredMixin(RoleRequiredMixin):
+    """Только для модераторов каналов"""
+    allowed_roles = ['channel_moderator']
+    permission_denied_message = "Доступ только для модераторов каналов"
+
+    def _test_role(self, request):
+        """Дополнительная проверка статуса модератора канала"""
+        return (
+                super()._test_role(request) and
+                hasattr(request.user, 'is_channel_moderator') and
+                request.user.is_channel_moderator
         )
 
 

@@ -27,12 +27,19 @@ class User(AbstractUser):
             self.partner_profile.status == 'active'
 
     @property
+    def is_channel_moderator(self):
+        """Проверка, является ли пользователь модератором какого-либо канала."""
+        return self.moderated_channels.exists()
+
+    @property
     def role(self):
         """Динамическое определение роли для удобства использования."""
         if not self.is_authenticated:
             return 'guest'
         if self.is_partner:
             return 'partner'
+        if self.is_channel_moderator:
+            return 'channel_moderator'
         return 'user'
 
 

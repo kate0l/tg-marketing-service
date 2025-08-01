@@ -38,6 +38,8 @@ def get_user_role(request):
         return 'guest'
     if hasattr(request.user, 'is_partner') and request.user.is_partner:
         return 'partner'
+    if hasattr(request.user, 'is_channel_moderator') and request.user.is_channel_moderator:
+        return 'channel_moderator'
     return 'user'
 
 
@@ -48,7 +50,8 @@ def handle_access_denied(request, current_role, allowed_roles, login_url=None, m
     default_messages = {
         'guest': "Требуется авторизация",
         'user': "Недостаточно прав",
-        'partner': "Доступ только для партнеров"
+        'partner': "Доступ только для партнеров",
+        'channel_moderator': "Доступ только для модераторов каналов"
     }
 
     error_message = message or default_messages.get(current_role, "Доступ запрещен")
@@ -113,6 +116,34 @@ def partner_required(view_func=None, login_url=None, message=None):
             if not getattr(request.user, 'is_partner', False):
                 messages.error(request, message or "Доступ только для партнеров")
                 return HttpResponseForbidden("Доступ только для партнеров")
+
+            return view_func(request, *args, **kwargs)
+
+        return _wrapped_view
+
+    if view_func:
+        return decorator(view_func)
+    return decorator
+
+
+def channel_moderator_required(view_func=None, login_url=None, message=None):
+    """
+    Только для модераторов каналов.
+    Всех остальных перенаправляет или показывает 403.
+    """
+
+    def decorator(view_func):
+        @wraps(view_func)
+        def _wrapped_view(request, *args, **kwargs):
+            # Сначала проверяем авторизацию
+            if not request.user.is_authenticated:
+                messages.warning(request, message or "Требуется авторизация")
+                return HttpResponseRedirect(login_url or reverse('login'))
+
+            # Затем проверяем статус модератора канала
+            if not getattr(request.user, 'is_channel_moderator', False):
+                messages.error(request, message or "Доступ только для модераторов каналов")
+                return HttpResponseForbidden("Доступ только для модераторов каналов")
 
             return view_func(request, *args, **kwargs)
 
