@@ -7,3 +7,8 @@ url for images - tests/fixtures/urls.json - [
     https://developer.mozilla.org/en-US/docs/Web/Media/Guides/Formats/Image_types,
     https://developer.mozilla.org/en-US/docs/Web/HTML/Reference/Elements/img,
     ]
+
+CharField - config/users/tests.py - [
+    https://github.com/django/django/blob/stable/5.2.x/django/db/models/fields/__init__.py#L1292
+]
+
