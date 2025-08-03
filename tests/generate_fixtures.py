@@ -53,7 +53,7 @@ def save_fixture(fixture_name: str, valid_data, invalid_data) -> None:
 
     fixture_path = Path(FIXTURES_DIR_PATH) / fixture_name
 
-    with open(fixture_name, 'w') as f:
+    with open(fixture_path, 'w') as f:
         dump(data, f)
         # indent=4
     
