@@ -50,3 +50,4 @@ telethon==1.40.0
     # via hexlet-price-tracker (pyproject.toml)
 urllib3==2.5.0
     # via requests
+unidecode==1.4.0
