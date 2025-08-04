@@ -213,4 +213,7 @@ test_session.*
 # Temporary files
 tmp.*
 staticfiles/
+telegram_session_string.py
 
+# local only
+telegram_session_string.py
