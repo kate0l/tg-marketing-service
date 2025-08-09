@@ -110,7 +110,7 @@ def generate_fixtures() -> None:
             'generator': dg.generate_charfield,
             # since rule does not validate data of preknown len
             # for clarity such rules are stored in different key "unlimited"
-            # meaning they should be limited when used
+            # meaning they do not have limit and it should be set
             'validator': rules['unlimited']['charfield']
         },
     ]
