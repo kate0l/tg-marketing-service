@@ -1,4 +1,9 @@
 {
-    "url": "((https|http):\\/\\/|)(www|).{5,100}\\.(apng|avif|gif|jpg|jpeg|jfif|pjp|pjpeg|png|svg|webp|bmp|ico|tiff)",
-    "email": "([-!#$%&'*+/=?^_`{}|~0-9A-Za-z]+(\\.[-!#$%&'*+/=?^_`{}|~0-9A-Za-z]+)*)@([A-Za-z0-9]([A-Za-z0-9\\\\-]{0,61}[A-Za-z0-9])?\\.)*[A-Za-z]{2,}"
+    "limited": {
+        "url": "((https|http):\\/\\/|)(www|).{5,100}\\.(apng|avif|gif|jpg|jpeg|jfif|pjp|pjpeg|png|svg|webp|bmp|ico|tiff)",
+        "email": "([-!#$%&'*+/=?^_`{}|~0-9A-Za-z]+(\\.[-!#$%&'*+/=?^_`{}|~0-9A-Za-z]+)*)@([A-Za-z0-9]([A-Za-z0-9\\\\-]{0,61}[A-Za-z0-9])?\\.)*[A-Za-z]{2,}"
+    },
+   "unlimited": {
+        "charfield": "*"
+   }
 }

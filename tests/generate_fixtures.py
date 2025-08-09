@@ -39,6 +39,12 @@ class DataGenerator:
 
     def generate_emails(self, rgx: str) -> tuple:
         return self._generate_data_from_regex(rgx)
+    
+    # max_length can be set on a charfield field (for example in a form)
+    # and we cannot limit length of the string,
+    # so add unexpected but necessary parameter max_length  
+    def generate_charfield(self, rgx: str, max_length: int=0) -> tuple:
+        return self._generate_data_from_regex(rgx, max_length)
 
     def generate_invalid_data(self):
         # random data with choices (random)
@@ -85,12 +91,20 @@ def generate_fixtures() -> None:
         {
             'name': 'urls',
             'generator': dg.generate_urls,
-            'validator': rules['url'],
+            'validator': rules['limited']['url'],
         },
         {
             'name': 'emails',
             'generator': dg.generate_emails,
-            'validator': rules['email'],
+            'validator': rules['limited']['email'],
+        },
+        {
+            'name': 'charfield',
+            'generator': dg.generate_charfield,
+            # since rule does not validate data of preknown len
+            # for clarity such rules are stored in different key "unlimited"
+            # meaning they should be limited when used
+            'validator': rules['unlimited']['charfield']
         },
     ]
     for fixture in fixtures_generators:
