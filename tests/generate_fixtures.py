@@ -8,7 +8,9 @@ import json
 # generated data is stored as json files in FIXTURES_DIR directory
 FIXTURES_DIR_PATH = 'tests/fixtures'
 RULES_FILE_PATH = 'tests/rules.json'
+DEFAULT_FIXTURE_LEN = 50
 # tests will fail if this len is not enough for a field in some form
+# ! why did i add this?
 INVALID_DATA_LEN = 20
 
 class DataGenerator:
@@ -24,14 +26,18 @@ class DataGenerator:
     '''
 
     def __init__(self):
+        # how many fixtures to make
         self.data_size = 10
-
-    def _generate_data_from_regex(self, rgx: str) -> tuple:
+    # max len is for fixtures which len is controlled by changeable code in forms etc.
+    # for exmaple email regex has len
+    def _generate_data_from_regex(self, rgx: str, max_len: int=0) -> tuple:
         data = []
+        if max_len:
+            rgx = f'(?:{rgx}){{1,{max_len}}}'
         for _ in range(self.data_size):
-            item = xeger(rgx)
-            item = sub(r'\s+', '', item)
-            data.append(item)
+            elem = xeger(rgx)
+            elem = sub(r'\s+', '', elem)
+            data.append(elem)
         return tuple(data)
 
     def generate_urls(self, rgx: str) -> tuple:
@@ -43,8 +49,8 @@ class DataGenerator:
     # max_length can be set on a charfield field (for example in a form)
     # and we cannot limit length of the string,
     # so add unexpected but necessary parameter max_length  
-    def generate_charfield(self, rgx: str, max_length: int=0) -> tuple:
-        return self._generate_data_from_regex(rgx, max_length)
+    def generate_charfield(self, rgx: str, max_len: int=DEFAULT_FIXTURE_LEN) -> tuple:
+        return self._generate_data_from_regex(rgx, max_len)
 
     def generate_invalid_data(self):
         # random data with choices (random)
@@ -66,7 +72,7 @@ def save_fixture(fixture_name: str, valid_data, invalid_data) -> None:
     fixture_path = f"{FIXTURES_DIR_PATH}/{fixture_name}.json"
     with open(fixture_path, 'w') as f:
         json.dump(data, f)
-        # indent=4
+        # indent=4 maybe needed
     
     return None
 
@@ -83,7 +89,8 @@ def generate_fixtures() -> None:
     '''
     dg = DataGenerator()
     # need rules for urls -> rules['urls']
-    # if its not in rules, then data validator function is used explicitly imported to here
+    # if its not in rules,
+    # then data validator function is used explicitly imported to here
     with open(RULES_FILE_PATH, 'r') as f:
         rules = json.load(f)
 
@@ -107,6 +114,7 @@ def generate_fixtures() -> None:
             'validator': rules['unlimited']['charfield']
         },
     ]
+
     for fixture in fixtures_generators:
         save_fixture(fixture['name'],
                      fixture['generator'](fixture['validator']),

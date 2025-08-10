@@ -11,7 +11,7 @@ def make_str(l: int) -> str:
     return ''.join(choices(range(maxunicode), l))
 
 class UserModelTest(TestCase):
-    def setUp(self):
+    def setup(self):
         # also need to check for superuser (idk what it is tho)
         self.user = User.objects.create_user(
             # check if it is a valid url in form test, not here
@@ -19,3 +19,12 @@ class UserModelTest(TestCase):
             role=make_str(ROLE_MAXLENGTH),
             bio=make_str(BIO_MAXLENGTH)
         )
+
+class ParserModelTest(TestCase):
+    def setup(self):
+        ...
+
+
+class GroupChannelModelTest(TestCase):
+    def setup(self):
+        ...
