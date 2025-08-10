@@ -30,6 +30,14 @@ class Group(models.Model):
         related_query_name='owned_group',
         verbose_name='Владелец',
     )
+    is_editorial = models.BooleanField(
+        default=False,
+        verbose_name='Редакторская подборка',
+    )
+    order = models.PositiveIntegerField(
+        default=0,
+        verbose_name='Порядок на главной',
+    )
     channels = models.ManyToManyField(
         'parser.TelegramChannel',
         verbose_name='Каналы',
@@ -38,7 +46,7 @@ class Group(models.Model):
     )
     image_url = models.CharField(
         blank=True,
-        verbose_name='обложка группы'
+        verbose_name='обложка группы',
     )
     created_at = models.DateTimeField(
         auto_now_add=True,

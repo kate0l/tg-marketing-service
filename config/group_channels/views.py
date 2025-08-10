@@ -10,7 +10,6 @@ from .forms import AddChannelForm, CreateGroupForm, UpdateGroupForm
 from .models import Group
 
 
-# -------- CREATE --------
 class CreateGroupView(View):
     def post(self, request, *args, **kwargs):
         up_form = UpdateGroupForm()
@@ -29,10 +28,9 @@ class CreateGroupView(View):
         })
 
 
-# -------- UPDATE --------
 class UpdateGroupView(View):
     def post(self, request, *args, **kwargs):
-        slug = kwargs['slug']                               # ← было name
+        slug = kwargs['slug']
         group = get_object_or_404(Group, slug=slug)
         form = UpdateGroupForm(request.POST, instance=group)
 
@@ -48,7 +46,6 @@ class UpdateGroupView(View):
         return redirect(reverse('users:profile'))
 
 
-# -------- DELETE --------
 class DeleteGroupView(View):
     def post(self, request, *args, **kwargs):
         slug = kwargs['slug']
@@ -58,7 +55,6 @@ class DeleteGroupView(View):
         return redirect(reverse('users:profile'))
 
 
-# -------- DETAIL --------
 class GroupDetailView(View):
     def get(self, request, *args, **kwargs):
         slug = kwargs['slug']
@@ -78,7 +74,6 @@ class GroupDetailView(View):
         })
 
 
-# -------- ADD CHANNELS --------
 class AddChannelsView(LoginRequiredMixin, UserPassesTestMixin, View):
     def test_func(self):
         self.group = get_object_or_404(Group, slug=self.kwargs['slug'])
