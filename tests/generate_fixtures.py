@@ -52,6 +52,9 @@ class DataGenerator:
     def generate_charfield(self, rgx: str, max_len: int=DEFAULT_FIXTURE_LEN) -> tuple:
         return self._generate_data_from_regex(rgx, max_len)
 
+			def generate_datetime(self, rgx: str) -> tuple:
+						return self._generate_data_from_regex(rgx)
+
     def generate_invalid_data(self):
         # random data with choices (random)
         # only restriction is data_size
