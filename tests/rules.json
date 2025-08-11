@@ -1,7 +1,9 @@
 {
     "limited": {
         "url": "((https|http):\\/\\/|)(www|).{5,100}\\.(apng|avif|gif|jpg|jpeg|jfif|pjp|pjpeg|png|svg|webp|bmp|ico|tiff)",
-        "email": "([-!#$%&'*+/=?^_`{}|~0-9A-Za-z]+(\\.[-!#$%&'*+/=?^_`{}|~0-9A-Za-z]+)*)@([A-Za-z0-9]([A-Za-z0-9\\\\-]{0,61}[A-Za-z0-9])?\\.)*[A-Za-z]{2,}"
+        "email": "([-!#$%&'*+/=?^_`{}|~0-9A-Za-z]+(\\.[-!#$%&'*+/=?^_`{}|~0-9A-Za-z]+)*)@([A-Za-z0-9]([A-Za-z0-9\\\\-]{0,61}[A-Za-z0-9])?\\.)*[A-Za-z]{2,}",
+						"datetime":
+"(19\d\d|20\d\d)-(0[1-9]|1[0-2])-(0[1-9]|[12]\d|3[01])"
     },
    "unlimited": {
         "charfield": "."
