@@ -8,7 +8,8 @@ import json
 # generated data is stored as json files in FIXTURES_DIR directory
 FIXTURES_DIR_PATH = 'tests/fixtures'
 RULES_FILE_PATH = 'tests/rules.json'
-DEFAULT_FIXTURE_LEN = 50
+DEFAULT_TEXT_LEN = 50
+DEFAULT_INT_LEN = 10
 # tests will fail if this len is not enough for a field in some form
 # ! why did i add this?
 INVALID_DATA_LEN = 20
@@ -48,12 +49,18 @@ class DataGenerator:
     
     # max_length can be set on a charfield field (for example in a form)
     # and we cannot limit length of the string,
-    # so add unexpected but necessary parameter max_length  
-    def generate_charfield(self, rgx: str, max_len: int=DEFAULT_FIXTURE_LEN) -> tuple:
+    # so add unexpected but necessary parameter max_len
+    def generate_text(self, rgx: str, max_len: int=DEFAULT_TEXT_LEN) -> tuple:
         return self._generate_data_from_regex(rgx, max_len)
 
-			def generate_datetime(self, rgx: str) -> tuple:
-						return self._generate_data_from_regex(rgx)
+    def generate_datetime(self, rgx: str) -> tuple:
+        return self._generate_data_from_regex(rgx)
+
+    def generate_int(self, rgx: str, max_len: int=DEFAULT_INT_LEN) -> tuple:
+        return self._generate_data_from_regex(rgx)
+
+    def generate_json(self, rgx:str) -> tuple:
+        return self._generate_data_from_regex(rgx)
 
     def generate_invalid_data(self):
         # random data with choices (random)
@@ -109,12 +116,12 @@ def generate_fixtures() -> None:
             'validator': rules['limited']['email'],
         },
         {
-            'name': 'charfield',
+            'name': 'text',
             'generator': dg.generate_charfield,
             # since rule does not validate data of preknown len
             # for clarity such rules are stored in different key "unlimited"
             # meaning they do not have limit and it should be set
-            'validator': rules['unlimited']['charfield']
+            'validator': rules['unlimited']['text']
         },
     ]
 
