@@ -117,11 +117,32 @@ def generate_fixtures() -> None:
         },
         {
             'name': 'text',
-            'generator': dg.generate_charfield,
+            'generator': dg.generate_text,
             # since rule does not validate data of preknown len
             # for clarity such rules are stored in different key "unlimited"
             # meaning they do not have limit and it should be set
             'validator': rules['unlimited']['text']
+        },
+        {
+            'name': 'int',
+            'generator': dg.generate_int,
+            # since rule does not validate data of preknown len
+            # for clarity such rules are stored in different key "unlimited"
+            # meaning they do not have limit and it should be set
+            'validator': rules['unlimited']['int']
+        },
+        {
+            'name': 'datetime',
+            'generator': dg.generate_datetime,
+            'validator': rules['limited']['datetime']
+        },
+        {
+            'name': 'json',
+            'generator': dg.generate_json,
+            # since rule does not validate data of preknown len
+            # for clarity such rules are stored in different key "unlimited"
+            # meaning they do not have limit and it should be set
+            'validator': rules['unlimited']['json']
         },
     ]
 
