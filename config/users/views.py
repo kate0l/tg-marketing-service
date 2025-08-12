@@ -251,8 +251,8 @@ class RestorePasswordRequestView(View):
                                  'Ссылка на восстановление пароля \
                                     отправлена на указанный вами Email'
             )
-            return redirect('users:login') # redirect already uses reverse
-
+            return redirect('users:login')  # redirect already uses reverse
+        
         messages.add_message(request,
                              messages.ERROR,
                              'Пожалуйста, введите корректный Email'
@@ -261,6 +261,7 @@ class RestorePasswordRequestView(View):
                       'users/restore-password-request.html',
                       {'form': form}
         )
+
 
 class RestorePasswordView(View):
     def get(self, request, *args, **kwargs):
