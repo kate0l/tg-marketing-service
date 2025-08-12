@@ -56,7 +56,7 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
-    
+
     'widget_tweaks',
     'django_bootstrap5',
     'django.contrib.sites',
@@ -174,6 +174,7 @@ USE_TZ = True
 # https://docs.djangoproject.com/en/5.2/howto/static-files/
 
 STATIC_URL = 'static/'
+STATIC_ROOT = BASE_DIR / 'staticfiles'
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field
@@ -189,3 +190,4 @@ else:
     ALLOWED_HOSTS = ['127.0.0.1', 'localhost']
     # Email settings for development - emails will be printed to console
     EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
+

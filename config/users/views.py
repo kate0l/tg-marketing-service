@@ -31,8 +31,8 @@ class LogoutView(View):
         messages.add_message(request, messages.INFO, 'Вы разлогинены')
         auth.logout(request)
         return redirect(reverse('main_index'))
-    
-    
+
+
 class LoginView(View):
     def get(self, request, *args, **kwargs):
         form = UserLoginForm()
@@ -41,7 +41,7 @@ class LoginView(View):
             'login.html',
             {'form': form}
         )
-        
+
     def post(self, request, *args, **kwargs):
         form = UserLoginForm(data=request.POST)
         if form.is_valid():
@@ -53,7 +53,7 @@ class LoginView(View):
                 messages.add_message(request, messages.SUCCESS, 'Вы залогинены')
                 return redirect(reverse('main_index'))
         return render(request, 'login.html', {'form': form})
-   
+
 
 class UserProfileView(View):
     def get(self, request, *args, **kwargs):
@@ -66,7 +66,7 @@ class UserProfileView(View):
         update_form = UpdateGroupForm()
         avatar_form = AvatarChange()
         user = request.user
-        groups = user.user_group.all()
+        groups = user.owned_groups.all()
         return render(
             request,
             'users/profile.html',
@@ -76,7 +76,7 @@ class UserProfileView(View):
              'avatar_form': avatar_form,
              'groups': groups}
         )
-        
+
 
 class UserRegister(View):
     def post(self, request, *args, **kwargs):
@@ -155,7 +155,7 @@ rK3p1E6Fc9XhpNRPhra9i9jUSSr4XI6zeI6povWGv3iMqqWLA56gbCOM1NMMeUcW67B5lB\
                                  'Пользователь успешно зарегистрирован')
             return redirect(reverse('users:login'))
         return render(request, 'users/register.html', {'form': form})
-    
+
     def get(self, request, *args, **kwargs):
         form = UserRegForm()
         return render(
@@ -163,7 +163,7 @@ rK3p1E6Fc9XhpNRPhra9i9jUSSr4XI6zeI6povWGv3iMqqWLA56gbCOM1NMMeUcW67B5lB\
             'users/register.html',
             {'form': form}
         )
-        
+
 
 class UserUpdate(View):
     def get(self, request, *args, **kwargs):
@@ -193,7 +193,7 @@ class UserUpdate(View):
                              messages.ERROR,
                         'У вас нет прав для изменения другого пользователя.')
         return redirect(reverse('users:profile'))
-    
+
     def post(self, request, *args, **kwargs):
         username = kwargs.get('username')
         user = User.objects.get(username=username)
@@ -228,7 +228,7 @@ class AvatarChangeView(View):
                                  messages.ERROR,
                                  avatar_url[1:])
         return redirect(reverse('users:profile'))
-    
+
 
 class RestorePasswordRequestView(View):
     def get(self, request, *args, **kwargs):
@@ -273,13 +273,13 @@ class RestorePasswordView(View):
             token = kwargs['token']
         except KeyError:
             token = None
-        
+
         if uid is None or token is None:
             messages.add_message(request,
                                  messages.ERROR,
                                  'Некорректная ссылка для восстановления пароля')
             return redirect('users:login')
-        
+
         try:
             uid_decoded = urlsafe_base64_decode(uid).decode()
         except TypeError:
@@ -294,13 +294,13 @@ class RestorePasswordView(View):
                                  messages.ERROR,
                                  'Пользователь не найден')
             return redirect('users:login')
-        
+
         if not default_token_generator.check_token(user, token):
             messages.add_message(request,
                                  messages.ERROR,
                                  'Некорректная ссылка для восстановления пароля')
             return redirect('users:login')
-        
+
         form = RestorePasswordForm(user=user)
         return render(
             request,
@@ -320,13 +320,13 @@ class RestorePasswordView(View):
             token = kwargs['token']
         except KeyError:
             token = None
-        
+
         if uid is None or token is None:
             messages.add_message(request,
                                  messages.ERROR,
                                  'Некорректная ссылка для восстановления пароля')
             return redirect('users:login')
-        
+
         try:
             uid_decoded = urlsafe_base64_decode(uid).decode()
         except TypeError:
@@ -341,13 +341,13 @@ class RestorePasswordView(View):
                                  messages.ERROR,
                                  'Пользователь не найден')
             return redirect('users:login')
-        
+
         if not default_token_generator.check_token(user, token):
             messages.add_message(request,
                                  messages.ERROR,
                                  'Некорректная ссылка для восстановления пароля')
             return redirect('users:login')
-        
+
         form = RestorePasswordForm(user=user, data=request.POST)
         if form.is_valid():
             form.save()
@@ -355,7 +355,7 @@ class RestorePasswordView(View):
                                  messages.SUCCESS,
                                  'Пароль успешно изменен')
             return redirect('users:login')
-        
+
         return render(
             request,
             'users/restore-password.html',
