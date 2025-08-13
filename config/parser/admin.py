@@ -2,6 +2,7 @@ from django.contrib import admin
 from .models import TelegramChannel, ChannelStats, ChannelModerator
 
 
+
 @admin.register(TelegramChannel)
 class TelegramChannelAdmin(admin.ModelAdmin):
     list_display = ['channel_id', 'title', 'username', 'participants_count', 'average_views', 'parsed_at']
