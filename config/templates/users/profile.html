@@ -64,39 +64,39 @@
                 <h1>{{ user.first_name }} {{ user.last_name }}</h1>
                 <p class="text-muted">{{ user.username }}</p>
                 <p>{{ user.bio }}</p>
-                
-                
-                
+
+
+
                 <div class="d-flex gap-3">
                     <a href="{% url 'users:user_update' user.username %}" class="btn btn-primary">Редактировать профиль</a>
                 </div>
             </div>
         </div>
-        
+
         <!-- Блок интересов -->
         <div class="row mb-4">
             <div class="col-12">
                 <h2 class="mb-4">Мои группы каналов</h2>
-                
+
                 <div class="row g-4">
                     <!-- Примеры карточек интересов -->
                      {% for group in groups %}
-                     
+
                      <div class="col-md-4 col-sm-6">
                         <div class="card interest-card">
-                            <a class=" text-decoration-none" href="/"><img src="{{ group.image_url }}" class="card-img-top" alt="{{ group.name }}"></a>
+                            <a class=" text-decoration-none" href="{% url 'group_channels:group_detail' group.slug %}"><img src="{{ group.image_url }}" class="card-img-top" alt="{{ group.slug }}"></a>
                             <div class="card-body">
                                 <h5 class="card-title">{{ group.name }}</h5>
                                 <p class="card-text">{{ group.description }}</p>
                                 <div class="d-flex justify-content-between align-items-center">
                                     <small class="text-muted"></small>
                                     <div>
-                                         <button class="btn btn-sm btn-outline-danger" data-bs-toggle="modal" data-bs-target="#deleteInterestModal" data-interest="{{ group.name }}">
+                                         <button class="btn btn-sm btn-outline-danger" data-bs-toggle="modal" data-bs-target="#deleteInterestModal" data-interest="{{ group.slug }}">
                                             <i class="fas fa-trash"></i>
                                         </button>
-                                        <button class="btn btn-sm btn-outline-secondary" data-bs-toggle="modal" data-bs-target="#editInterestModal" 
-                                                data-name="{{ group.name }}" 
-                                                data-desc="{{ group.description }}" 
+                                        <button class="btn btn-sm btn-outline-secondary" data-bs-toggle="modal" data-bs-target="#editInterestModal"
+                                                data-name="{{ group.name}}"
+                                                data-desc="{{ group.description }}"
                                                 data-img="{{ group.image_url }}">
                                             <i class="fas fa-edit"></i>
                                         </button>
@@ -105,9 +105,9 @@
                             </div>
                         </div>
                     </div>
-                     
+
                      {% endfor %}
-                    
+
                     <!-- Блок для добавления нового интереса -->
                     <div class="col-md-4 col-sm-6">
                         <div class="card add-interest" data-bs-toggle="modal" data-bs-target="#addInterestModal">
@@ -121,7 +121,7 @@
             </div>
         </div>
     </div>
-    
+
     <!-- Модальное окно для добавления интереса -->
     <div class="modal fade" id="addInterestModal" tabindex="-1" aria-labelledby="addInterestModalLabel" aria-hidden="true">
         <div class="modal-dialog">
@@ -187,7 +187,7 @@
             </div>
         </div>
     </div>
-    
+
     <!-- Модальное окно для удаления интереса -->
     <div class="modal fade" id="deleteInterestModal" tabindex="-1" aria-labelledby="deleteInterestModalLabel" aria-hidden="true">
         <div class="modal-dialog">
@@ -223,15 +223,15 @@
                 <form id="avatarForm" method="post" action="{% url 'users:avatar_update' user.username %}">
                     {% csrf_token %}
                     <div class="text-center mb-4">
-                        <img id="avatarPreview" 
-                             src="{{ user.avatar_image }}" 
+                        <img id="avatarPreview"
+                             src="{{ user.avatar_image }}"
                              alt="Предпросмотр" class="profile-avatar rounded-circle mb-3">
                     </div>
                     <div class="mb-3">
                         <label for="avatarUrl" class="form-label">URL нового аватара</label>
                         {{ avatar_form.avatar_image }}
                     </div>
-                    
+
                     <div class="d-flex justify-content-between">
                         <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">
                             <i class="fas fa-times me-1"></i> Отмена
@@ -252,7 +252,7 @@
         document.getElementById('avatarUrl').addEventListener('input', function(e) {
             const url = e.target.value;
             const preview = document.getElementById('avatarPreview');
-            
+
             if (url) {
                 preview.src = url;
             } else {
@@ -266,11 +266,11 @@
             const name = button.getAttribute('data-name');
             const desc = button.getAttribute('data-desc');
             const img = button.getAttribute('data-img');
-            
+
             document.getElementById('editGroupName').value = name;
             document.getElementById('editGroupDescription').value = desc;
             document.getElementById('editGroupImage').value = img;
-            
+
             // Устанавливаем action формы
             const form = document.getElementById('editInterestForm');
             form.action = "{% url 'group_channels:group_update' 'PLACEHOLDER' %}".replace('PLACEHOLDER', encodeURIComponent(name));
