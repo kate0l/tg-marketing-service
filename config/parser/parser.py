@@ -42,7 +42,7 @@ async def tg_parser(url: str, client: TelegramClient, limit: int = 10) -> dict:
         time.sleep(1)
         # Gets channel information
         channel = await client.get_entity(url)
-<<<<<<< HEAD
+
         data["title"] = channel.title  # Channel title
         data["channel_id"] = channel.id  # Channel id
         data["username"] = channel.username if channel.username else '-'  # Channel username
@@ -50,15 +50,7 @@ async def tg_parser(url: str, client: TelegramClient, limit: int = 10) -> dict:
         # Channel creation date
         data["creation_date"] = channel.date.isoformat() if channel.date else None
         # Fetches last channel posts
-=======
-        data['title'] = channel.title  # название канала
-        data['channel_id'] = channel.id  # id канала
-        data['username'] = channel.username  # юзернейм канала
-        data['verified'] = channel.verified  # верифицирован ли канал (булево)
-        # дата создания канала
-        data['creation_date'] = channel.date.isoformat() if channel.date else None
-        # получаем 10 последних постов из канала
->>>>>>> upstream/main
+
         last_messages = await client.get_messages(channel, limit=limit * 3)
         # Calculates average views of recent posts
         data["last_messages"] = [
@@ -67,7 +59,7 @@ async def tg_parser(url: str, client: TelegramClient, limit: int = 10) -> dict:
         ]
         total_views = 0
         total_posts = 0
-<<<<<<< HEAD
+
         for post in last_messages:
             if post.views:
                 total_views += post.views
@@ -78,20 +70,8 @@ async def tg_parser(url: str, client: TelegramClient, limit: int = 10) -> dict:
     except FloodWaitError as e:
         log.error("Anti-flood triggered, waiting required")
         # wait recommended time + random interval
-=======
 
-        if last_messages is not None:
-            for post in last_messages:
-                if post.views:
-                    total_views += post.views
-                    total_posts += 1
-            average_views = total_views // total_posts
-            data['average_views'] = average_views
 
-    except FloodWaitError as e:
-        log.error('Сработал антифлуд, нужно подождать')
-        # ждем рекомендуемое время + случайный промежуток
->>>>>>> upstream/main
         await asyncio.sleep(e.seconds + random.uniform(1.0, 2.0))
 
     except ChannelInvalidError:
@@ -101,17 +81,13 @@ async def tg_parser(url: str, client: TelegramClient, limit: int = 10) -> dict:
         log.error(f"Username does not exist: {url}")
 
     except AuthKeyError:
-<<<<<<< HEAD
+
         log.critical("AUTH SESSION FAILURE")
 
     except Exception as e:
         log.error(f"ERROR - {e}")
-=======
-        log.critical('Проблемы с сессией авторизации')
 
-    # except Exception as e:
-        # print(f"Ошибка: {e}")
->>>>>>> upstream/main
+
 
     if channel:
         try:
@@ -119,7 +95,7 @@ async def tg_parser(url: str, client: TelegramClient, limit: int = 10) -> dict:
             full_channel = await client(GetFullChannelRequest(channel))
 
         except FloodWaitError as e:
-<<<<<<< HEAD
+
             log.error("Anti-flood triggered, waiting required")
             # wait recommended time + random interval
             await asyncio.sleep(e.seconds + random.uniform(1.0, 2.0))
@@ -129,14 +105,6 @@ async def tg_parser(url: str, client: TelegramClient, limit: int = 10) -> dict:
 
         except Exception as e:
             log.error(f"ERROR - {e}")
-=======
-            log.error('Сработал антифлуд, нужно подождать')
-            # ждем рекомендуемое время + случайный промежуток
-            await asyncio.sleep(e.seconds + random.uniform(1.0, 2.0))
-
-        except ForbiddenError:
-            log.warning('Ошибка доступа к полной информации канала')
->>>>>>> upstream/main
 
         if full_channel:
             # Fetching channel participants count

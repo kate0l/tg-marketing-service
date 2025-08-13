@@ -3,10 +3,7 @@ import logging
 from asgiref.sync import async_to_sync
 from django.conf import settings
 from django.contrib import messages
-<<<<<<< HEAD
-from django.shortcuts import render
-=======
->>>>>>> upstream/main
+
 from django.urls import reverse_lazy
 from django.utils import timezone
 from django.views.generic import DetailView, FormView, ListView
@@ -89,17 +86,13 @@ class ParserView(FormView):
 
         # Update parsing date for Telegram channel
         channel.parsed_at = current_date
-<<<<<<< HEAD
+
         channel.save(update_fields=["parsed_at"])
         log.info(
             f"For channel: {channel.title} parsed stat; "
             f"- participants: {current_count} growth: {daily_growth}"
         )
-=======
-        channel.save(update_fields=['parsed_at'])
-        log.info(f'Для канала: {channel.title} записана статистика; '
-                 f'- Подписчики: {current_count} прирост: {daily_growth}')
->>>>>>> upstream/main
+
 
     def form_valid(self, form):
         """Form validation"""
