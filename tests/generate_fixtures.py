@@ -19,15 +19,18 @@ class DataValidators:
     @staticmethod
     def validate_json_object( json_obj: Any) -> bool:
         try:
-            # json.dump write to a file,
-            # so i use dumpts, which create an obj
-            json.dumps(json_obj)
+            '''
+            json.loads insted of json.load
+            because loads -> obj, load -> file-like obj
+            loads is faster
+            '''
+            json.loads(json_obj)
         except (TypeError, ValueError) as e:
             return False
         # this cathces all other exceptions
         # this should not happen, so raising Exception
         except Exception as e:
-            raise Exception(f'Exception while creating json_str: {e}')
+            raise Exception(f'Exception while validating json_str: {e}')
         else:
             return True
 
