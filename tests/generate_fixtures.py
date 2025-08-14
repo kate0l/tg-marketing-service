@@ -53,6 +53,7 @@ class DataGenerator:
         except FileNotFoundError as e:
             raise Exception(f'Rules file is not found: {e}')
         
+        # considering of adding a rule key and change validator to the func that should check validity accordingto the rule
         self.fixtures_generators = [
             {
                 'name': 'urls',
