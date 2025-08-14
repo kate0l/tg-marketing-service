@@ -177,7 +177,70 @@ class DataGenerator:
         
         return None
 
+def generate_fixtures() -> None:
+    '''
+    load rules from json file
+    if rules not used, then generator has built-in validators
 
+    Important: it will be better if rules are imported to class DataGenerator
+    so that other developers can skip looking at signature of the class's methods
+
+    save_fixture(FIXTURE_DIR_PATH/fixturename, generate_data, generate_invalid_data)
+    -> json file with 2 keys ('valid', 'invalid') each with data_size num of elems
+    '''
+    dg = DataGenerator()
+    # need rules for urls -> rules['urls']
+    # if its not in rules,
+    # then data validator function is used explicitly imported to here
+    with open(RULES_FILE_PATH, 'r') as f:
+        rules = json.load(f)
+
+    fixtures_generators = [
+        {
+            'name': 'urls',
+            'generator': dg.generate_urls,
+            'validator': rules['limited']['url'],
+        },
+        {
+            'name': 'emails',
+            'generator': dg.generate_emails,
+            'validator': rules['limited']['email'],
+        },
+        {
+            'name': 'text',
+            'generator': dg.generate_text,
+            # since rule does not validate data of preknown len
+            # for clarity such rules are stored in different key "unlimited"
+            # meaning they do not have limit and it should be set
+            'validator': rules['unlimited']['text']
+        },
+        {
+            'name': 'int',
+            'generator': dg.generate_int,
+            # since rule does not validate data of preknown len
+            # for clarity such rules are stored in different key "unlimited"
+            # meaning they do not have limit and it should be set
+            'validator': rules['unlimited']['int']
+        },
+        {
+            'name': 'datetime',
+            'generator': dg.generate_datetime,
+            'validator': rules['limited']['datetime']
+        },
+        {
+            'name': 'json',
+            'generator': dg.generate_json,
+            # since rule does not validate data of preknown len
+            # for clarity such rules are stored in different key "unlimited"
+            # meaning they do not have limit and it should be set
+            'validator': rules['unlimited']['json']
+        },
+    ]
+
+    for fixture in fixtures_generators:
+        save_fixture(fixture['name'],
+                     fixture['generator'](fixture['validator']),
+                     dg.generate_invalid_data())
 
 if __name__ == '__main__':
     dg = DataGenerator()
