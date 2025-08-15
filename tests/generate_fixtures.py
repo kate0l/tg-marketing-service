@@ -16,7 +16,7 @@ NUM_OF_FIXTURES = 10
 # ! why did i add this?
 INVALID_DATA_LEN = 20
 
-class DataValidators:
+class DataValidator:
     @staticmethod
     def validate_json_object( json_obj: Any) -> bool:
         try:
@@ -104,7 +104,7 @@ class DataGenerator:
                 'name': 'json',
                 'generator': self.generate_json_object,
                 'rule': None,
-                'validator': DataValidators.validate_json_object
+                'validator': DataValidator.validate_json_object
             },
         ]
 
@@ -151,7 +151,7 @@ class DataGenerator:
             return sub(r'\s+', '', s)
         json_obj = tuple({rand_str(): rand_str()} for _ in range(max_len))
         # validate by passing a JSON string to the validator
-        return json_obj if DataValidators.validate_json_object(json.dumps(json_obj)) else ()
+        return json_obj if DataValidator.validate_json_object(json.dumps(json_obj)) else ()
 
     def generate_invalid_data(self):
         # random data with choices (random)
@@ -163,21 +163,12 @@ class DataGenerator:
 
         return tuple(invalid_data)
     
+    @staticmethod
     def generate_fixtures(self) -> None:
         '''
-        load rules from json file
-        if rules not used, then generator has built-in validators
-
-        Important: it will be better if rules are imported to class DataGenerator
-        so that other developers can skip looking at signature of the class's methods
-
         save_fixture(FIXTURE_DIR_PATH/fixturename, generate_data, generate_invalid_data)
         -> json file with 2 keys ('valid', 'invalid') each with data_size num of elems
         '''
-        # need rules for urls -> rules['urls']
-        # if its not in rules,
-        # then data validator function is used explicitly imported to here
-
         for fixture in self.fixtures_generators:
             rule = fixture.get('rule')
             valid = fixture['generator']() if rule is None else fixture['generator'](rule)
@@ -200,7 +191,3 @@ class DataGenerator:
             # indent=4 maybe needed
         
         return None
-
-def generate_fixtures() -> None:
-    dg = DataGenerator()
-    dg.generate_fixtures()
