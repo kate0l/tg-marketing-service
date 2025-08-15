@@ -11,6 +11,7 @@ RULES_FILE_PATH = 'tests/rules.json'
 DEFAULT_TEXT_LEN = 50
 DEFAULT_INT_LEN = 10
 DEFAULT_FILE_DEPTH = 5
+NUM_OF_FIXTURES = 10
 # tests will fail if this len is not enough for a field in some form
 # ! why did i add this?
 INVALID_DATA_LEN = 20
@@ -47,16 +48,27 @@ class DataGenerator:
     output: lists with data_size num of elements
     '''
 
-    def __init__(self, rules: dict=None) -> None:
+    def __init__(self, num_of_fixtures=NUM_OF_FIXTURES) -> None:
         # how many fixtures to make
-        self.data_size = 10
+        self.data_size = num_of_fixtures
         try:
             with open(RULES_FILE_PATH, 'r') as f:
                 self.rules = json.load(f)
         except FileNotFoundError as e:
             raise Exception(f'Rules file is not found: {e}')
         
-        # considering of adding a rule key and change validator to the func that should check validity accordingto the rule
+        # considering of adding a rule key and change validator to the func that should check validity according to the rule
+        self.rules = {
+            "limited": {
+                "url": "((https|http):\\/\\/|)(www|).{5,100}\\.(apng|avif|gif|jpg|jpeg|jfif|pjp|pjpeg|png|svg|webp|bmp|ico|tiff)",
+                "email": "([-!#$%&'*+/=?^_`{}|~0-9A-Za-z]+(\\.[-!#$%&'*+/=?^_`{}|~0-9A-Za-z]+)*)@([A-Za-z0-9]([A-Za-z0-9\\\\-]{0,61}[A-ZaZm0-9])?\\.)*[A-Za-z]{2,}",
+                "datetime": "(19\\d\\d|20\\d\\d)-(0[1-9]|1[0-2])-(0[1-9]|[12]\\d|3[01])",
+            },
+            "unlimited": {
+                "text": ".",
+                "int": "\\d",
+            },
+        }
         self.fixtures_generators = [
             {
                 'name': 'urls',
