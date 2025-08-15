@@ -73,40 +73,37 @@ class DataGenerator:
             {
                 'name': 'urls',
                 'generator': self.generate_urls,
-                'validator': self.rules['limited']['url'],
+                'rule': self.rules['limited']['url'],
+                'validator': None,
             },
             {
                 'name': 'emails',
                 'generator': self.generate_emails,
-                'validator': self.rules['limited']['email'],
+                'rule': self.rules['limited']['email'],
+                'validator': None,
             },
             {
                 'name': 'text',
                 'generator': self.generate_text,
-                # since rule does not validate data of preknown len
-                # for clarity such rules are stored in different key "unlimited"
-                # meaning they do not have limit and it should be set
-                'validator': self.rules['unlimited']['text']
+                'rule': self.rules['unlimited']['text'],
+                'validator': None,
             },
             {
                 'name': 'int',
                 'generator': self.generate_int,
-                # since rule does not validate data of preknown len
-                # for clarity such rules are stored in different key "unlimited"
-                # meaning they do not have limit and it should be set
-                'validator': self.rules['unlimited']['int']
+                'rule': self.rules['unlimited']['int'],
+                'validator': None,
             },
             {
                 'name': 'datetime',
                 'generator': self.generate_datetime,
-                'validator': self.rules['limited']['datetime']
+                'rule': self.rules['limited']['datetime'],
+                'validator': None,
             },
             {
                 'name': 'json',
                 'generator': self.generate_json_object,
-                # since rule does not validate data of preknown len
-                # for clarity such rules are stored in different key "unlimited"
-                # meaning they do not have limit and it should be set
+                'rule': None,
                 'validator': DataValidators.validate_json_object
             },
         ]
@@ -114,11 +111,11 @@ class DataGenerator:
 
     # max len is for fixtures which len is controlled by changeable code in forms etc.
     # for exmaple email regex has len
-    def _generate_data_from_regex(self, validator, max_size: int=0) -> tuple:
-        if type(validator) == str:
-            rgx = validator
+    def _generate_data_from_regex(self, rule: str, max_len: int = 0) -> tuple:
+        if isinstance(rule, str):
+            rgx = rule
             data = []
-            if max_size:
+            if max_len:
                 rgx = f'(?:{rgx}){{1,{max_len}}}'
             for _ in range(self.data_size):
                 elem = xeger(rgx)
@@ -126,30 +123,35 @@ class DataGenerator:
                 data.append(elem)
             return tuple(data)
 
-    def generate_urls(self, rgx: str) -> tuple:
-        return self._generate_data_from_regex(rgx)
+    def generate_urls(self, rule: str) -> tuple:
+        return self._generate_data_from_regex(rule)
 
-    def generate_emails(self, rgx: str) -> tuple:
-        return self._generate_data_from_regex(rgx)
+    def generate_emails(self, rule: str) -> tuple:
+        return self._generate_data_from_regex(rule)
     
     # max_length can be set on a charfield field (for example in a form)
     # and we cannot limit length of the string,
     # so add unexpected but necessary parameter max_len
-    def generate_text(self, rgx: str, max_len: int=DEFAULT_TEXT_LEN) -> tuple:
-        return self._generate_data_from_regex(rgx, max_len)
+    def generate_text(self, rule: str, max_len: int = DEFAULT_TEXT_LEN) -> tuple:
+        return self._generate_data_from_regex(rule, max_len)
 
-    def generate_datetime(self, rgx: str) -> tuple:
-        return self._generate_data_from_regex(rgx)
+    def generate_datetime(self, rule: str) -> tuple:
+        return self._generate_data_from_regex(rule)
 
-    def generate_int(self, rgx: str, max_len: int=DEFAULT_INT_LEN) -> tuple:
-        return self._generate_data_from_regex(rgx, max_len)
+    def generate_int(self, rule: str, max_len: int = DEFAULT_INT_LEN) -> tuple:
+        return self._generate_data_from_regex(rule, max_len)
 
     # a list of dicts
     # this is for JSONField in parser model, but actually JSONField only accapets lists
     # so tuple will be converted to list when passed. i leave as it is bcs it doesnt rly matter
-    def generate_json_object(self, max_len: int=DEFAULT_FILE_DEPTH) -> tuple:
-        json_str = tuple({self.generate_text(): self.generate_text()} for _ in range(max_len))
-        return json_str if DataValidators.validate_json_object(json_str) else ()
+    def generate_json_object(self, max_len: int = DEFAULT_FILE_DEPTH) -> tuple:
+        # generate single random strings for keys/values using the text rule
+        def rand_str() -> str:
+            s = xeger(f'(?:{self.rules["unlimited"]["text"]}){{1,{DEFAULT_TEXT_LEN}}}')
+            return sub(r'\s+', '', s)
+        json_obj = tuple({rand_str(): rand_str()} for _ in range(max_len))
+        # validate by passing a JSON string to the validator
+        return json_obj if DataValidators.validate_json_object(json.dumps(json_obj)) else ()
 
     def generate_invalid_data(self):
         # random data with choices (random)
@@ -177,9 +179,13 @@ class DataGenerator:
         # then data validator function is used explicitly imported to here
 
         for fixture in self.fixtures_generators:
-            self.save_fixture(fixture['name'],
-                        fixture['generator'](fixture['validator']),
-                        self.generate_invalid_data())
+            rule = fixture.get('rule')
+            valid = fixture['generator']() if rule is None else fixture['generator'](rule)
+            self.save_fixture(
+                fixture['name'],
+                valid,
+                self.generate_invalid_data()
+            )
 
     # data saved as json file
     def save_fixture(self, fixture_name: str, valid_data, invalid_data) -> None:
