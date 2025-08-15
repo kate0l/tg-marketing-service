@@ -1,18 +1,47 @@
 {% extends "base.html" %}
 
+{% block head %}
+<title>Hexlet Telegram Stats</title>
+{% endblock %}
+
 {% block content %}
 
- <div class="card mt-5 mx-5">
-        <div class="card-body bg-light">
-            <div class="container">
-                <div class="row justify-content-center">
-                    <div class="custom-form-container col-12 col-lg-10 p-4">
-                        <h1 class="my-4">Hexlet Telegram Stats</h1>
-                        <h4>Проект онлайн-школы программирования Хекслет, призван сделать администрирование телеграм каналов легким, эффективным и приятным</h4>
-                    </div>
-                </div>
-            </div>
+<div class="card mt-5 mx-5">
+  <div class="card-body bg-light">
+    <div class="container">
+      <div class="row justify-content-center">
+        <div class="custom-form-container col-12 col-lg-10 p-4">
+          <h1 class="my-4">Hexlet Telegram Stats</h1>
+          <h4>
+            Проект онлайн-школы программирования Хекслет, призван сделать
+            администрирование телеграм-каналов лёгким, эффективным и приятным
+          </h4>
         </div>
+      </div>
     </div>
+  </div>
+</div>
 
-{% endblock  %}
+{% if editorial_groups %}
+<div class="container my-5">
+  <h3 class="mb-3">Подборки от редакции</h3>
+
+  <div class="row">
+    {% for g in editorial_groups %}
+      <div class="col-6 col-md-3 mb-1">
+        <a href="{% url 'group_channels:group_detail' g.slug %}"
+           class="d-flex justify-content-between text-decoration-none link-dark">
+          <span>{{ g.name }}</span>
+          <span class="text-muted small">{{ g.ch_count }}</span>
+        </a>
+      </div>
+    {% endfor %}
+  </div>
+</div>
+{% else %}
+<div class="container my-5">
+  <p class="text-muted">Пока нет подборок от редакции.</p>
+</div>
+{% endif %}
+
+{% endblock %}

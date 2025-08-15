@@ -13,6 +13,7 @@ https://docs.djangoproject.com/en/5.2/ref/settings/
 from pathlib import Path
 from .logging import LOGGING
 import os
+from celery.schedules import crontab
 
 from django.core.exceptions import ImproperlyConfigured
 from dotenv import load_dotenv
@@ -23,17 +24,33 @@ load_dotenv()
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-# Настройки приложения Telegram
+# Telegram app settings
 TELEGRAM_API_ID = os.getenv('TELEGRAM_API_ID')
 TELEGRAM_API_HASH = os.getenv('TELEGRAM_API_HASH')
 TELEGRAM_SESSION_STRING = os.getenv('TELEGRAM_SESSION_STRING')
 
-# Проверка наличия обязательных настроек Telegram
+# Telegram settings check
 if not TELEGRAM_API_ID or not TELEGRAM_API_HASH or not TELEGRAM_SESSION_STRING:
     raise ImproperlyConfigured(
         "Нет конфигурации для Telegram API. "
         "Установи TELEGRAM_API_ID, TELEGRAM_API_HASH, TELEGRAM_SESSION_STRING"
     )
+
+# Celery settings
+CELERY_BROKER_URL = "redis://localhost:6379/0"  # Redis like messages brocker
+CELERY_RESULT_BACKEND = "redis://localhost:6379/0"  # tasks results
+CELERY_ACCEPT_CONTENT = ["json"]  # tasks data format
+CELERY_TASK_SERIALIZER = "json"
+CELERY_RESULT_SERIALIZER = "json"
+CELERY_TIMEZONE = "Europe/Moscow"  # project timezone
+
+# Celery dict with schedule
+CELERY_BEAT_SCHEDULE = {
+    "parse-all-channels-every-day-12-30": {
+        "task": "config.parser.tasks.parse_all_channels",  # path to task
+        "schedule": crontab(hour=11, minute=40),
+    },
+}
 
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/5.2/howto/deployment/checklist/
@@ -56,7 +73,7 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
-    
+
     'widget_tweaks',
     'django_bootstrap5',
     'django.contrib.sites',
@@ -89,6 +106,7 @@ MIDDLEWARE = [
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
+    'config.users.middleware.RoleMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
     'allauth.account.middleware.AccountMiddleware',
@@ -106,6 +124,7 @@ TEMPLATES = [
                 'django.template.context_processors.request',
                 'django.contrib.auth.context_processors.auth',
                 'django.contrib.messages.context_processors.messages',
+                'config.context_processors.user_role',
             ],
         },
     },
@@ -172,6 +191,7 @@ USE_TZ = True
 # https://docs.djangoproject.com/en/5.2/howto/static-files/
 
 STATIC_URL = 'static/'
+STATIC_ROOT = BASE_DIR / 'staticfiles'
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field
@@ -187,3 +207,4 @@ else:
     ALLOWED_HOSTS = ['127.0.0.1', 'localhost']
     # Email settings for development - emails will be printed to console
     EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
+

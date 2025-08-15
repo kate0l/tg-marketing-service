@@ -1,0 +1,69 @@
+{% extends "base.html" %}
+
+{% block head %}
+    <title>{{ group.name }} – Каналы</title>
+{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+
+  <h2 class="mb-1">{{ group.name }}</h2>
+  {% if group.description %}
+      <p class="text-muted mb-4">{{ group.description }}</p>
+  {% else %}
+      <p class="text-muted mb-4">Описание не задано.</p>
+  {% endif %}
+
+  {% if channels %}
+    <ul class="list-group mb-4">
+      {% for ch in channels %}
+        <li class="list-group-item d-flex justify-content-between">
+          <a href="{% url 'parser:detail' ch.id %}"
+             class="fw-semibold text-decoration-none">
+            {{ ch.username }}
+          </a>
+          <span class="text-muted">{{ ch.participants_count }} подписчиков</span>
+        </li>
+      {% endfor %}
+    </ul>
+  {% else %}
+    <p class="text-muted">Пока каналов нет</p>
+  {% endif %}
+
+
+  {% if is_owner %}
+    <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addChannelsModal">
+      Добавить каналы
+    </button>
+  {% endif %}
+</div>
+
+{% if is_owner %}
+<div class="modal fade" id="addChannelsModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+
+      <div class="modal-header">
+        <h5 class="modal-title">Добавить каналы</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+
+      <form method="post" action="{% url 'group_channels:group_add_channels' group.slug %}">
+        {% csrf_token %}
+        <div class="modal-body">
+          {{ add_form.channels.label_tag }}
+          {{ add_form.channels }}
+          <div class="form-text">{{ add_form.channels.help_text }}</div>
+        </div>
+
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
+          <button type="submit" class="btn btn-primary">Сохранить</button>
+        </div>
+      </form>
+
+    </div>
+  </div>
+</div>
+{% endif %}
+{% endblock %}
