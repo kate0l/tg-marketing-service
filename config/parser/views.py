@@ -53,6 +53,9 @@ class ParserView(FormView):
                 'pinned_messages': data['pinned_messages'],
                 'last_messages': data['last_messages'],
                 'average_views': data['average_views'],
+                'language': data['language'],
+                'country': data['country'],
+                'category': data['category'],
             }
         )
 
@@ -93,6 +96,9 @@ class ParserView(FormView):
         """ Обработка формы """
         identifier = form.cleaned_data['channel_identifier']
         limit = form.cleaned_data['limit']
+        language = form.cleaned_data['language']
+        country = form.cleaned_data['country']
+        category = form.cleaned_data['category']
         log.info(f'Начинаем обработку данных для канала; '
                  f'- {identifier} лимит - {limit}')
 
@@ -100,6 +106,10 @@ class ParserView(FormView):
             # Запуск асинхронной функции парсинга
             async_parser = async_to_sync(self.async_tg_parser)
             parsed_data = async_parser(identifier, limit)
+            parsed_data.update({'language': language,
+                                'country': country,
+                                'category': category})
+            
             log.info(f'Парсинг завершен для канала;'
                      f'- {parsed_data['title']} ({parsed_data['channel_id']}')
 
