@@ -51,16 +51,10 @@ class DataGenerator:
     def __init__(self, num_of_fixtures = NUM_OF_FIXTURES) -> None:
         # how many fixtures to make
         self.data_size = num_of_fixtures
-        try:
-            with open(RULES_FILE_PATH, 'r') as f:
-                self.rules = json.load(f)
-        except FileNotFoundError as e:
-            raise Exception(f'Rules file is not found: {e}')
-
         self.rules = {
             "limited": {
                 "url": "((https|http):\\/\\/|)(www|).{5,100}\\.(apng|avif|gif|jpg|jpeg|jfif|pjp|pjpeg|png|svg|webp|bmp|ico|tiff)",
-                "email": "([-!#$%&'*+/=?^_`{}|~0-9A-Za-z]+(\\.[-!#$%&'*+/=?^_`{}|~0-9A-Za-z]+)*)@([A-Za-z0-9]([A-Za-z0-9\\\\-]{0,61}[A-ZaZm0-9])?\\.)*[A-Za-z]{2,}",
+                "email": "([-!#$%&'*+/=?^_`{}|~0-9A-Za-z]+(\\.[-!#$%&'*+/=?^_`{}|~0-9A-Za-z]+)*)@([A-Za-z0-9]([A-Za-z0-9\\\\-]{0,61}[0-9A-Za-z])?\\.)*[A-Za-z]{2,}",
                 "datetime": "(19\\d\\d|20\\d\\d)-(0[1-9]|1[0-2])-(0[1-9]|[12]\\d|3[01])",
             },
             "unlimited": {
@@ -68,11 +62,13 @@ class DataGenerator:
                 "int": "\\d",
             },
         }
+        '''
+        rule - how the fixture is generated
+        (for example regex)
+        validator - how the fixture is validated
+        (for example func that receives fixture)
+        '''
         self.fixtures_generators = [
-            '''
-            rule - how the fixture is generated (for example regex)
-            validator - how the fixture is validated (for example func that receives fixture)
-            '''
             {
                 'name': 'urls',
                 'generator': self.generate_urls,
@@ -166,7 +162,6 @@ class DataGenerator:
 
         return tuple(invalid_data)
 
-    @staticmethod
     def generate_fixtures(self) -> None:
         '''
         save_fixture(FIXTURE_DIR_PATH/fixturename, generate_data, generate_invalid_data)
