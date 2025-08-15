@@ -18,7 +18,7 @@ INVALID_DATA_LEN = 20
 
 class DataValidator:
     @staticmethod
-    def validate_json_object( json_obj: Any) -> bool:
+    def validate_json_object(json_obj: Any) -> bool:
         try:
             '''
             json.loads insted of json.load
@@ -48,7 +48,7 @@ class DataGenerator:
     output: lists with data_size num of elements
     '''
 
-    def __init__(self, num_of_fixtures=NUM_OF_FIXTURES) -> None:
+    def __init__(self, num_of_fixtures = NUM_OF_FIXTURES) -> None:
         # how many fixtures to make
         self.data_size = num_of_fixtures
         try:
@@ -56,8 +56,7 @@ class DataGenerator:
                 self.rules = json.load(f)
         except FileNotFoundError as e:
             raise Exception(f'Rules file is not found: {e}')
-        
-        # considering of adding a rule key and change validator to the func that should check validity according to the rule
+
         self.rules = {
             "limited": {
                 "url": "((https|http):\\/\\/|)(www|).{5,100}\\.(apng|avif|gif|jpg|jpeg|jfif|pjp|pjpeg|png|svg|webp|bmp|ico|tiff)",
@@ -70,6 +69,10 @@ class DataGenerator:
             },
         }
         self.fixtures_generators = [
+            '''
+            rule - how the fixture is generated (for example regex)
+            validator - how the fixture is validated (for example func that receives fixture)
+            '''
             {
                 'name': 'urls',
                 'generator': self.generate_urls,
@@ -128,7 +131,7 @@ class DataGenerator:
 
     def generate_emails(self, rule: str) -> tuple:
         return self._generate_data_from_regex(rule)
-    
+
     # max_length can be set on a charfield field (for example in a form)
     # and we cannot limit length of the string,
     # so add unexpected but necessary parameter max_len
@@ -162,7 +165,7 @@ class DataGenerator:
             invalid_data.append(''.join(list_of_chars))
 
         return tuple(invalid_data)
-    
+
     @staticmethod
     def generate_fixtures(self) -> None:
         '''
@@ -178,7 +181,7 @@ class DataGenerator:
                 self.generate_invalid_data()
             )
 
-    # data saved as json file
+    # fixture saved as json file
     def save_fixture(self, fixture_name: str, valid_data, invalid_data) -> None:
         data = {
             "valid": valid_data,
@@ -189,5 +192,5 @@ class DataGenerator:
         with open(fixture_path, 'w') as f:
             json.dump(data, f)
             # indent=4 maybe needed
-        
+
         return None
