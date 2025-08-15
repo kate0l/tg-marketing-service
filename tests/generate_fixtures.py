@@ -102,15 +102,17 @@ class DataGenerator:
 
     # max len is for fixtures which len is controlled by changeable code in forms etc.
     # for exmaple email regex has len
-    def _generate_data_from_regex(self, rgx: str, max_len: int=0) -> tuple:
-        data = []
-        if max_len:
-            rgx = f'(?:{rgx}){{1,{max_len}}}'
-        for _ in range(self.data_size):
-            elem = xeger(rgx)
-            elem = sub(r'\s+', '', elem)
-            data.append(elem)
-        return tuple(data)
+    def _generate_data_from_regex(self, validator, max_size: int=0) -> tuple:
+        if type(validator) == str:
+            rgx = validator
+            data = []
+            if max_size:
+                rgx = f'(?:{rgx}){{1,{max_len}}}'
+            for _ in range(self.data_size):
+                elem = xeger(rgx)
+                elem = sub(r'\s+', '', elem)
+                data.append(elem)
+            return tuple(data)
 
     def generate_urls(self, rgx: str) -> tuple:
         return self._generate_data_from_regex(rgx)
