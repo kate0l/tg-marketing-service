@@ -4,10 +4,16 @@ from rstr import xeger
 from re import sub
 import json
 from typing import Any
+from django.core.validators import EmailValidator, URLValidator
+from django.core.exceptions import ValidationError
+import logging
+import os
+from datetime import datetime
+
+logger = logging.getLogger(__name__)
 
 # generated data is stored as json files in FIXTURES_DIR directory
 FIXTURES_DIR_PATH = 'tests/fixtures'
-RULES_FILE_PATH = 'tests/rules.json'
 DEFAULT_TEXT_LEN = 50
 DEFAULT_INT_LEN = 10
 DEFAULT_FILE_DEPTH = 5
@@ -20,20 +26,37 @@ class DataValidator:
     @staticmethod
     def validate_json_object(json_obj: Any) -> bool:
         try:
-            '''
-            json.loads insted of json.load
-            because loads -> obj, load -> file-like obj
-            loads is faster
-            '''
-            json.loads(json_obj)
+            if isinstance(json_obj, (str, bytes, bytearray)):
+                json.loads(json_obj)
+            else:
+                json.dumps(json_obj)
         except (TypeError, ValueError) as e:
-            return False
-        # this cathces all other exceptions
-        # this should not happen, so raising Exception
-        except Exception as e:
-            raise Exception(f'Exception while validating json_str: {e}')
+            raise ValidationError(e)
         else:
             return True
+
+    @staticmethod
+    def validate_url(url: str) -> bool:
+        URLValidator()(url)
+        return True
+
+    @staticmethod
+    def validate_datetime(value: str) -> bool:
+        fmts = (
+            "%Y-%m-%d %H:%M",
+            "%Y-%m-%d %H:%M:%S",
+            "%Y-%m-%d %H:%M:%S.%f",
+            "%Y-%m-%dT%H:%M",
+            "%Y-%m-%dT%H:%M:%S",
+            "%Y-%m-%dT%H:%M:%S.%f",
+        )
+        for fmt in fmts:
+            try:
+                datetime.strptime(value, fmt)
+                return True
+            except ValueError:
+                continue
+        raise ValidationError("Invalid datetime format")
 
 
 class DataGenerator:
@@ -53,13 +76,13 @@ class DataGenerator:
         self.data_size = num_of_fixtures
         self.rules = {
             "limited": {
-                "url": "((https|http):\\/\\/|)(www|).{5,100}\\.(apng|avif|gif|jpg|jpeg|jfif|pjp|pjpeg|png|svg|webp|bmp|ico|tiff)",
-                "email": "([-!#$%&'*+/=?^_`{}|~0-9A-Za-z]+(\\.[-!#$%&'*+/=?^_`{}|~0-9A-Za-z]+)*)@([A-Za-z0-9]([A-Za-z0-9\\\\-]{0,61}[0-9A-Za-z])?\\.)*[A-Za-z]{2,}",
-                "datetime": "(19\\d\\d|20\\d\\d)-(0[1-9]|1[0-2])-(0[1-9]|[12]\\d|3[01])",
+                "url": r'((https|http):\/\/|)(www|).{5,100}.(apng|avif|gif|jpg|jpeg|jfif|pjp|pjpeg|png|svg|webp|bmp|ico|tiff)',
+                "email": r"([-!#$%&'*+/=?^_`{}|~0-9A-Za-z]+(\.[-!#$%&'*+/=?^_`{}|~0-9A-Za-z]+)*)@([A-Za-z0-9]([A-Za-z0-9\-]{0,61}[0-9A-Za-z])?\.)*[A-Za-z]{2,}",
+                "datetime": r'^(19\d\d|20\d\d)-(0[1-9]|1[0-2])-(0[1-9]|[12]\d|3[01])[ T]([0-1][0-9]|2[0-3]):[0-5][0-9]((:[0-5][0-9])?(\.\d{1,6})?)?$',
             },
             "unlimited": {
-                "text": ".",
-                "int": "\\d",
+                "text": r'.',
+                "int": r'\d',
             },
         }
         '''
@@ -73,36 +96,42 @@ class DataGenerator:
                 'name': 'urls',
                 'generator': self.generate_urls,
                 'rule': self.rules['limited']['url'],
-                'validator': None,
+                'data_type': str,
+                'validator': DataValidator.validate_url,
             },
             {
                 'name': 'emails',
                 'generator': self.generate_emails,
                 'rule': self.rules['limited']['email'],
-                'validator': None,
+                'data_type': str,
+                'validator': EmailValidator(),  # use instance
             },
             {
                 'name': 'text',
                 'generator': self.generate_text,
                 'rule': self.rules['unlimited']['text'],
+                'data_type': str,
                 'validator': None,
             },
             {
                 'name': 'int',
                 'generator': self.generate_int,
                 'rule': self.rules['unlimited']['int'],
+                'data_type': int,  # fixed comma
                 'validator': None,
             },
             {
                 'name': 'datetime',
                 'generator': self.generate_datetime,
                 'rule': self.rules['limited']['datetime'],
-                'validator': None,
+                'data_type': str,  # fixed comma
+                'validator': DataValidator.validate_datetime,
             },
             {
                 'name': 'json',
                 'generator': self.generate_json_object,
                 'rule': None,
+                'data_type': object,
                 'validator': DataValidator.validate_json_object
             },
         ]
@@ -110,47 +139,59 @@ class DataGenerator:
 
     # max len is for fixtures which len is controlled by changeable code in forms etc.
     # for exmaple email regex has len
-    def _generate_data_from_regex(self, rule: str, max_len: int = 0) -> tuple:
-        if isinstance(rule, str):
-            rgx = rule
-            data = []
-            if max_len:
-                rgx = f'(?:{rgx}){{1,{max_len}}}'
-            for _ in range(self.data_size):
-                elem = xeger(rgx)
-                elem = sub(r'\s+', '', elem)
-                data.append(elem)
+    def _generate_data(self, rule: str, max_len: int = 0, data_type=str, validator: object = None, remove_whitespace: bool = True) -> tuple:
+        data = []
+        if not isinstance(rule, str):
             return tuple(data)
+        rgx = rule
+        if max_len:
+            rgx = f'(?:{rgx}){{1,{max_len}}}'
+        for _ in range(self.data_size):
+            elem = xeger(rgx)
+            if remove_whitespace:
+                # NEED TO FIX THIS
+                elem = sub(r'\s+', '', elem)
+            elem = data_type(elem)
+            try:
+                if validator:
+                    validator(elem)  # do not overwrite elem pls; validators return None on success
+            except ValidationError as e:
+                logger.warning(f'Validation by {validator} failed: {e}')
+            else:
+                data.append(elem)
+        return tuple(data)
 
-    def generate_urls(self, rule: str) -> tuple:
-        return self._generate_data_from_regex(rule)
+    def generate_urls(self, rule: str, data_type=str, validator=None) -> tuple:
+        validator = validator or DataValidator.validate_url
+        return self._generate_data(rule, data_type=data_type, validator=validator)
 
-    def generate_emails(self, rule: str) -> tuple:
-        return self._generate_data_from_regex(rule)
+    def generate_emails(self, rule: str, data_type=str, validator=None) -> tuple:
+        validator = validator or EmailValidator()
+        return self._generate_data(rule, data_type=data_type, validator=validator)
 
-    # max_length can be set on a charfield field (for example in a form)
-    # and we cannot limit length of the string,
-    # so add unexpected but necessary parameter max_len
-    def generate_text(self, rule: str, max_len: int = DEFAULT_TEXT_LEN) -> tuple:
-        return self._generate_data_from_regex(rule, max_len)
+    def generate_text(self, rule: str, data_type=str, validator=None) -> tuple:
+        return self._generate_data(rule, max_len=DEFAULT_TEXT_LEN, data_type=data_type, validator=validator, remove_whitespace=False)
 
-    def generate_datetime(self, rule: str) -> tuple:
-        return self._generate_data_from_regex(rule)
+    def generate_datetime(self, rule: str, data_type=str, validator=None) -> tuple:
+        validator = validator or DataValidator.validate_datetime
+        return self._generate_data(rule, data_type=data_type, validator=validator, remove_whitespace=False)
 
-    def generate_int(self, rule: str, max_len: int = DEFAULT_INT_LEN) -> tuple:
-        return self._generate_data_from_regex(rule, max_len)
+    def generate_int(self, rule: str, data_type=int, validator=None) -> tuple:
+        return self._generate_data(rule, max_len=DEFAULT_INT_LEN, data_type=data_type, validator=validator)
 
-    # a list of dicts
-    # this is for JSONField in parser model, but actually JSONField only accapets lists
-    # so tuple will be converted to list when passed. i leave as it is bcs it doesnt rly matter
-    def generate_json_object(self, max_len: int = DEFAULT_FILE_DEPTH) -> tuple:
-        # generate single random strings for keys/values using the text rule
-        def rand_str() -> str:
-            s = xeger(f'(?:{self.rules["unlimited"]["text"]}){{1,{DEFAULT_TEXT_LEN}}}')
+    def generate_json_object(self, rule=None, data_type=object, validator=None) -> tuple:
+        # a list of dicts (tuple for internal consistency; JSON will serialize as list)
+        def rand_str(max_line_len: int = DEFAULT_TEXT_LEN) -> str:
+            s = xeger(f'(?:{self.rules["unlimited"]["text"]}){{1,{max_line_len}}}')
             return sub(r'\s+', '', s)
-        json_obj = tuple({rand_str(): rand_str()} for _ in range(max_len))
-        # validate by passing a JSON string to the validator
-        return json_obj if DataValidator.validate_json_object(json.dumps(json_obj)) else ()
+        json_obj = tuple({rand_str(): rand_str()} for _ in range(self.data_size))
+        if validator:
+            try:
+                validator(json_obj)  # validates serializability
+            except ValidationError as e:
+                logger.warning(f'JSON validation failed: {e}')
+                return tuple()
+        return json_obj
 
     def generate_invalid_data(self):
         # random data with choices (random)
@@ -168,8 +209,11 @@ class DataGenerator:
         -> json file with 2 keys ('valid', 'invalid') each with data_size num of elems
         '''
         for fixture in self.fixtures_generators:
-            rule = fixture.get('rule')
-            valid = fixture['generator']() if rule is None else fixture['generator'](rule)
+            valid = fixture['generator'](
+                fixture['rule'],
+                fixture['data_type'],
+                fixture['validator']
+            )
             self.save_fixture(
                 fixture['name'],
                 valid,
@@ -182,10 +226,8 @@ class DataGenerator:
             "valid": valid_data,
             "invalid": invalid_data,
         }
-
+        os.makedirs(FIXTURES_DIR_PATH, exist_ok=True)  # ensure dir exists
         fixture_path = f"{FIXTURES_DIR_PATH}/{fixture_name}.json"
-        with open(fixture_path, 'w') as f:
-            json.dump(data, f)
-            # indent=4 maybe needed
-
+        with open(fixture_path, 'w', encoding='utf-8') as f:
+            json.dump(data, f, ensure_ascii=True, indent=2)
         return None
