@@ -9,6 +9,7 @@ from django.core.exceptions import ValidationError
 import logging
 import os
 from datetime import datetime
+from config.users.models import ROLE_MAXLENGTH, BIO_MAXLENGTH  # for ModelFixtureGenerator
 
 logger = logging.getLogger(__name__)
 
@@ -17,8 +18,6 @@ FIXTURES_DIR_PATH = 'tests/fixtures'
 DEFAULT_TEXT_LEN = 50
 DEFAULT_INT_LEN = 10
 NUM_OF_FIXTURES = 10
-# tests will fail if this len is not enough for a field in some form
-# ! why did i add this?
 INVALID_DATA_LEN = 20
 
 class DataValidator:
@@ -40,18 +39,24 @@ class DataValidator:
         return True
     @staticmethod
     def validate_email(email: str) -> bool:
-        django.core.validators.EmailValidator(str)
+        django.core.validators.EmailValidator()(email)
         return True
     @staticmethod
-    def validate_datetime(value: str) -> bool:
-        # all possbile formatbs
+    def validate_datetime(value: Any) -> bool:
+        # accept datetime objects
+        if isinstance(value, datetime):
+            return True
+        # if not str, then what is it
+        if not isinstance(value, str):
+            raise ValidationError('Invalid datetime type')
+        # all possible formats
         formats = (
-            "%Y-%m-%d %H:%M",
-            "%Y-%m-%d %H:%M:%S",
-            "%Y-%m-%d %H:%M:%S.%f",
-            "%Y-%m-%dT%H:%M",
-            "%Y-%m-%dT%H:%M:%S",
-            "%Y-%m-%dT%H:%M:%S.%f",
+            '%Y-%m-%d %H:%M',
+            '%Y-%m-%d %H:%M:%S',
+            '%Y-%m-%d %H:%M:%S.%f',
+            '%Y-%m-%dT%H:%M',
+            '%Y-%m-%dT%H:%M:%S',
+            '%Y-%m-%dT%H:%M:%S.%f',
         )
         for format in formats:
             try:
@@ -59,7 +64,8 @@ class DataValidator:
                 return True
             except ValueError:
                 continue
-        raise ValidationError("Invalid datetime format")
+        # if here, then not datetime format - raise validation error
+        raise ValidationError('Invalid datetime format')
 
 
 class DataGenerator:
@@ -78,15 +84,15 @@ class DataGenerator:
         # how many fixtures to make
         self.data_size = num_of_fixtures
         self.rules = {
-            "limited": {
+            'limited': {
                 # for eaxmple https://example.com/image.jpg
-                "url": r'(https?:\/\/)(?:www\.)?[A-Za-z0-9-]{2,63}\.[A-Za-z]{2,6}\/[A-Za-z0-9._~-]{3,50}\.(?:apng|avif|gif|jpg|jpeg|jfif|pjp|pjpeg|png|svg|webp|bmp|ico|tiff)',
-                "email": r"([-!#$%&'*+/=?^_`{}|~0-9A-Za-z]+(\.[-!#$%&'*+/=?^_`{}|~0-9A-Za-z]+)*)@([A-Za-z0-9]([A-Za-z0-9\-]{0,61}[0-9A-Za-z])?\.)*[A-Za-z]{2,}",
-                "datetime": r'^(19\d\d|20\d\d)-(0[1-9]|1[0-2])-(0[1-9]|[12]\d|3[01])[ T]([0-1][0-9]|2[0-3]):[0-5][0-9]((:[0-5][0-9])?(\.\d{1,6})?)?$',
+                'url': r'(https?:\/\/)(?:www\.)?[A-Za-z0-9-]{2,63}\.[A-Za-z]{2,6}\/[A-Za-z0-9._~-]{3,50}\.(?:apng|avif|gif|jpg|jpeg|jfif|pjp|pjpeg|png|svg|webp|bmp|ico|tiff)',
+                'email': r"([-!#$%&'*+/=?^_`{}|~0-9A-Za-z]+(\.[-!#$%&'*+/=?^_`{}|~0-9A-Za-z]+)*)@([A-Za-z0-9]([A-Za-z0-9\-]{0,61}[0-9A-Za-z])?\.)*[A-Za-z]{2,}",
+                'datetime': r'^(19\d\d|20\d\d)-(0[1-9]|1[0-2])-(0[1-9]|[12]\d|3[01])[ T]([0-1][0-9]|2[0-3]):[0-5][0-9]((:[0-5][0-9])?(\.\d{1,6})?)?$',
             },
-            "unlimited": {
-                "text": r'.',
-                "int": r'\d',
+            'unlimited': {
+                'text': r'.',
+                'int': r'\d',
             },
         }
         '''
@@ -128,7 +134,7 @@ class DataGenerator:
                 'name': 'datetime',
                 'generator': self.generate_datetime,
                 'rule': self.rules['limited']['datetime'],
-                'data_type': str,  # fixed comma
+                'data_type': str,
                 'validator': DataValidator.validate_datetime,
             },
             {
@@ -161,7 +167,8 @@ class DataGenerator:
             rgx = f'(?:{rgx}){{1,{max_len}}}'
 
         attempts = 0
-        max_attempts = self.data_size
+        # avoid under-generation when validation is strict
+        max_attempts = self.data_size * max_attempts_multiplier
         seen = set() if ensure_unique else None
 
         while len(data) < self.data_size and attempts < max_attempts:
@@ -191,28 +198,35 @@ class DataGenerator:
                 data.append(elem)
         return tuple(data)
 
-    def generate_urls(self, rule: str, data_type=str, validator=None) -> tuple:
-        return self._generate_data(rule, data_type=data_type, validator=validator)
+    # kwargs because there is too many args
+    def generate_urls(self, rule: str, data_type=str, validator=None, **kwargs) -> tuple:
+        return self._generate_data(rule, data_type=data_type, validator=validator, **kwargs)
 
-    def generate_emails(self, rule: str, data_type=str, validator=None) -> tuple:
-        return self._generate_data(rule, data_type=data_type, validator=validator)
+    def generate_emails(self, rule: str, data_type=str, validator=None, **kwargs) -> tuple:
+        # ensure uniqueness for models like users.User.email (unique=True)
+        kwargs.setdefault('ensure_unique', True)
+        return self._generate_data(rule, data_type=data_type, validator=validator, **kwargs)
 
-    def generate_text(self, rule: str, data_type=str, validator=None) -> tuple:
-        return self._generate_data(rule, max_len=DEFAULT_TEXT_LEN, data_type=data_type, validator=validator, remove_whitespace=False)
+    def generate_text(self, rule: str, data_type=str, validator=None, max_len=DEFAULT_TEXT_LEN, **kwargs) -> tuple:
+        # keep whitespace in text
+        kwargs.setdefault('remove_whitespace', False)
+        return self._generate_data(rule, max_len=max_len, data_type=data_type, validator=validator, **kwargs)
 
-    def generate_datetime(self, rule: str, data_type=str, validator=None) -> tuple:
-        return self._generate_data(rule, data_type=data_type, validator=validator, remove_whitespace=False)
+    def generate_datetime(self, rule: str, data_type=str, validator=None, **kwargs) -> tuple:
+        # by default keep whitespace as-is for datetime strings
+        kwargs.setdefault('remove_whitespace', False)
+        return self._generate_data(rule, data_type=data_type, validator=validator, **kwargs)
 
-    def generate_int(self, rule: str, data_type=int, validator=None) -> tuple:
-        return self._generate_data(rule, max_len=DEFAULT_INT_LEN, data_type=data_type, validator=validator)
+    def generate_int(self, rule: str, data_type=int, validator=None, max_len=DEFAULT_INT_LEN, **kwargs) -> tuple:
+        return self._generate_data(rule, max_len=max_len, data_type=data_type, validator=validator, **kwargs)
 
     def generate_json_object(self, rule=None, data_type=object, validator=None) -> tuple:
         # a list of dicts
         def rand_str(max_line_len: int = DEFAULT_TEXT_LEN) -> str:
-            s = xeger(f'(?:{self.rules["unlimited"]["text"]}){{1,{max_line_len}}}')
+            s = xeger(f'(?:{self.rules['unlimited']['text']}){{1,{max_line_len}}}')
             s = sub(r'\s+', '', s) # can be only whistespace
             return s
-        json_obj = tuple([{rand_str(): rand_str()}] for _ in range(self.data_size))
+        json_obj = tuple([[{rand_str(): rand_str()}]] for _ in range(self.data_size))
         if validator:
             try:
                 validator(json_obj)
@@ -251,11 +265,27 @@ class DataGenerator:
     # fixture saved as json file
     def save_fixture(self, fixture_name: str, valid_data, invalid_data) -> None:
         data = {
-            "valid": valid_data,
-            "invalid": invalid_data,
+            'valid': valid_data,
+            'invalid': invalid_data,
         }
         os.makedirs(FIXTURES_DIR_PATH, exist_ok=True)
-        fixture_path = f"{FIXTURES_DIR_PATH}/{fixture_name}.json"
+        fixture_path = f'{FIXTURES_DIR_PATH}/{fixture_name}.json'
         with open(fixture_path, 'w', encoding='utf-8') as f:
-            json.dump(data, f, ensure_ascii=False, indent=2)
+            # default=str handles datetime objects
+            json.dump(data, f, ensure_ascii=False, indent=2, default=str)
         return None
+
+
+class ModelFixtureGenerator:
+    '''
+    fixtures based on models,
+    made by DataGenerator class
+    '''
+    def __init__(self, num_of_fixtures=NUM_OF_FIXTURES) -> None:
+        self.base = DataGenerator(num_of_fixtures)
+        self.fixtures = [
+            ...
+        ]
+
+    def generate_fixtures(self) -> None:
+        ...
