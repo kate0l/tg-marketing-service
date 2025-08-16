@@ -283,9 +283,123 @@ class ModelFixtureGenerator:
     '''
     def __init__(self, num_of_fixtures=NUM_OF_FIXTURES) -> None:
         self.base = DataGenerator(num_of_fixtures)
-        self.fixtures = [
-            ...
-        ]
+
+    def _save(self, name: str, records: list[dict]) -> None:
+        self.base.save_fixture(name, tuple(records), self.base.generate_invalid_data())
+
+    # Users.User fixtures
+    # Fields covered: avatar_image (url), role (text<=ROLE_MAXLENGTH), bio (text<=BIO_MAXLENGTH), email (unique)
+    def _make_users(self) -> tuple:
+        emails = self.base.generate_emails(self.base.rules['limited']['email'])
+        avatars = self.base.generate_urls(self.base.rules['limited']['url'])
+        roles = self.base.generate_text(self.base.rules['unlimited']['text'], max_len=ROLE_MAXLENGTH)
+        bios = self.base.generate_text(self.base.rules['unlimited']['text'], max_len=BIO_MAXLENGTH)
+
+        records = []
+        for i in range(self.base.data_size):
+            records.append({
+                'email': emails[i],
+                'avatar_image': avatars[i],
+                'role': roles[i],
+                'bio': bios[i],
+            })
+
+        self._save('model_users_User', records)
+        # return a stable unique key list to use for FKs
+        return emails
+
+    # parser.TelegramChannel fixtures
+    # Fields covered: channel_id (unique int), username (text), title (text), description (text),
+    # participants_count (int), parsed_at (datetime), pinned_messages (json), creation_date (datetime),
+    # last_messages (json), average_views (int)
+    def _make_telegram_channels(self) -> tuple:
+        channel_ids = self.base.generate_int(
+            self.base.rules['unlimited']['int'],
+            max_len=12,
+            data_type=int,
+            ensure_unique=True,
+        )
+        usernames = self.base.generate_text(self.base.rules['unlimited']['text'], max_len=32)
+        titles = self.base.generate_text(self.base.rules['unlimited']['text'], max_len=64)
+        descriptions = self.base.generate_text(self.base.rules['unlimited']['text'], max_len=256)
+        participants = self.base.generate_int(self.base.rules['unlimited']['int'], max_len=7, data_type=int)
+        dt_rule = self.base.rules['limited']['datetime']
+        parsed_at = self.base.generate_datetime(dt_rule)
+        pinned = self.base.generate_json_object()
+        creation_date = self.base.generate_datetime(dt_rule)
+        last_messages = self.base.generate_json_object()
+        avg_views = self.base.generate_int(self.base.rules['unlimited']['int'], max_len=7, data_type=int)
+
+        records = []
+        for i in range(self.base.data_size):
+            records.append({
+                'channel_id': channel_ids[i],
+                'username': usernames[i],
+                'title': titles[i],
+                'description': descriptions[i],
+                'participants_count': participants[i],
+                'parsed_at': parsed_at[i],
+                'pinned_messages': pinned[i] if i < len(pinned) else [],
+                'creation_date': creation_date[i],
+                'last_messages': last_messages[i] if i < len(last_messages) else [],
+                'average_views': avg_views[i],
+            })
+
+        self._save('model_parser_TelegramChannel', records)
+        # return channel_ids as stable unique keys for FK usage
+        return channel_ids
+
+    # parser.ChannelStats fixtures
+    # Fields covered: channel (FK -> TelegramChannel.channel_id), participants_count (int),
+    # daily_growth (int), parsed_at (datetime)
+    def _make_channel_stats(self, channel_ids: tuple) -> None:
+        participants = self.base.generate_int(self.base.rules['unlimited']['int'], max_len=7, data_type=int)
+        daily_growth = self.base.generate_int(self.base.rules['unlimited']['int'], max_len=5, data_type=int)
+        parsed_at = self.base.generate_datetime(self.base.rules['limited']['datetime'])
+
+        records = []
+        n = len(channel_ids) or 1
+        for i in range(self.base.data_size):
+            records.append({
+                # reference channel by its unique channel_id (assumption: FK stored as this unique field for synthetic fixtures)
+                'channel': channel_ids[i % n],
+                'participants_count': participants[i],
+                'daily_growth': daily_growth[i],
+                'parsed_at': parsed_at[i],
+            })
+
+        self._save('model_parser_ChannelStats', records)
+
+    # group_channels.Group fixtures
+    # Fields covered: name (unique), description (text), owner (FK -> users.User.email),
+    # image_url (url), created_at (datetime)
+    def _make_groups(self, user_emails: tuple) -> None:
+        names = self.base.generate_text(self.base.rules['unlimited']['text'], max_len=50, ensure_unique=True)
+        descriptions = self.base.generate_text(self.base.rules['unlimited']['text'], max_len=200)
+        image_urls = self.base.generate_urls(self.base.rules['limited']['url'])
+        created_at = self.base.generate_datetime(self.base.rules['limited']['datetime'])
+
+        records = []
+        n = len(user_emails) or 1
+        for i in range(self.base.data_size):
+            records.append({
+                'name': names[i],
+                'description': descriptions[i],
+                # reference owner by a unique user email (assumption: FK represented by the unique field for synthetic fixtures)
+                'owner': user_emails[i % n],
+                'image_url': image_urls[i],
+                'created_at': created_at[i],
+            })
+
+        self._save('model_group_channels_Group', records)
 
     def generate_fixtures(self) -> None:
-        ...
+        user_emails = self._make_users()
+        channel_ids = self._make_telegram_channels()
+        self._make_groups(user_emails)
+        self._make_channel_stats(channel_ids)
+
+if __name__ == '__main__':
+    # Generate primitive fixtures (optional) and model-based fixtures
+    # Data-only fixtures (urls, emails, etc.) can still be created via DataGenerator if desired.
+    ModelFixtureGenerator(NUM_OF_FIXTURES).generate_fixtures()
