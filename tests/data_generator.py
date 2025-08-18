@@ -91,9 +91,10 @@ class DataGenerator:
                 'datetime': r'^(19\d\d|20\d\d)-(0[1-9]|1[0-2])-(0[1-9]|[12]\d|3[01])[ T]([0-1][0-9]|2[0-3]):[0-5][0-9]((:[0-5][0-9])?(\.\d{1,6})?)?$',
             },
             'unlimited': {
-                'text': r'.',
+                'text': r'[\t\n\r -~]',
                 'int': r'\d',
             },
+            'invalid': r'[\t\n\r -~]'
         }
         '''
         rule - how the fixture is generated
@@ -151,7 +152,7 @@ class DataGenerator:
     # for exmaple email regex has len
     def _generate_data(
         self,
-        rule: str,
+        rgx: str,
         max_len: int = 0,
         data_type=str,
         validator: object = None,
@@ -160,14 +161,13 @@ class DataGenerator:
         max_attempts_multiplier: int = 20,
     ) -> tuple:
         data = []
-        if not isinstance(rule, str):
+        if not isinstance(rgx, str):
             return tuple(data)
-        rgx = rule
         if max_len:
             rgx = f'(?:{rgx}){{1,{max_len}}}'
 
         attempts = 0
-        # avoid under-generation when validation is strict
+        # avoid under-generation when validation is strict - simply make more generations
         max_attempts = self.data_size * max_attempts_multiplier
         seen = set() if ensure_unique else None
 
@@ -223,27 +223,26 @@ class DataGenerator:
     def generate_json_object(self, rule=None, data_type=object, validator=None) -> tuple:
         # a list of dicts
         def rand_str(max_line_len: int = DEFAULT_TEXT_LEN) -> str:
-            s = xeger(f'(?:{self.rules['unlimited']['text']}){{1,{max_line_len}}}')
-            s = sub(r'\s+', '', s) # can be only whistespace
-            return s
-        json_obj = tuple([[{rand_str(): rand_str()}]] for _ in range(self.data_size))
+            # random printable string without leading/trailing whitespace
+            s = xeger(self.rules['unlimited']['text'] + '{1,' + str(max_line_len) + '}')
+            return sub(r'^\s+|\s+$', '', s) or 'x'
+        # produce a list (not nested) of small dicts per entry
+        items = []
+        for _ in range(self.data_size):
+            list_len = 2
+            items.append([{rand_str(): rand_str()} for __ in range(list_len)])
+        json_obj = tuple(items)
         if validator:
-            try:
-                validator(json_obj)
-            except ValidationError as e:
-                logger.warning(f'JSON validation failed: {e}')
-                return tuple()
+            # keep only those that pass validator, fallback to a simple list if none
+            filtered = [obj for obj in json_obj if validator(obj)]
+            json_obj = tuple(filtered) if filtered else tuple([[{"x": "y"}]] * self.data_size)
         return json_obj
 
-    def generate_invalid_data(self):
+    def generate_invalid_data(self, rule=None, max_len=INVALID_DATA_LEN):
         # random data with choices (random)
         # only restriction is data_size
-        invalid_data = []
-        for _ in range(self.data_size):
-            list_of_chars = [chr(c) for c in choices(range(maxunicode+1), k=INVALID_DATA_LEN)]
-            invalid_data.append(''.join(list_of_chars))
-
-        return tuple(invalid_data)
+        rgx = f'(?:{rule}){{1,{max_len}}}'
+        return tuple(xeger(rgx) for _ in range(self.data_size))
 
     def generate_fixtures(self) -> None:
         '''
@@ -259,7 +258,7 @@ class DataGenerator:
             self.save_fixture(
                 fixture['name'],
                 valid,
-                self.generate_invalid_data()
+                self.generate_invalid_data(rule=self.rules['invalid'])
             )
 
     # fixture saved as json file

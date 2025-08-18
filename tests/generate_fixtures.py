@@ -1,20 +1,7 @@
-from typing import List, Dict, Any, Tuple
+from typing import List, Dict, Any
 from itertools import islice
 
 from tests.data_generator import DataGenerator, NUM_OF_FIXTURES, ROLE_MAXLENGTH, BIO_MAXLENGTH
-
-# Models
-from config.users.models import User, PartnerProfile  # noqa: F401  (imported for clarity)
-from config.parser.models import TelegramChannel, ChannelModerator, ChannelStats  # noqa: F401
-from config.group_channels.models import Group  # noqa: F401
-
-# Forms
-from config.users.forms import (  # noqa: F401
-    UserLoginForm, UserRegForm, UserUpdateForm, AvatarChange,
-    RestorePasswordRequestForm, RestorePasswordForm
-)
-from config.parser.forms import ChannelParseForm  # noqa: F401
-from config.group_channels.forms import CreateGroupForm, UpdateGroupForm, AddChannelForm  # noqa: F401
 
 
 class ModelAndFormFixtureGenerator:
@@ -35,13 +22,33 @@ class ModelAndFormFixtureGenerator:
         return min(len(s) for s in seqs if hasattr(s, '__len__') and len(s) is not None) if seqs else 0
 
     def _save(self, name: str, valid: List[Dict[str, Any]]) -> None:
-        self.gen.save_fixture(name, valid, self.gen.generate_invalid_data())
-
+        # Build shape-consistent invalid payloads
+        def _invalid_like(rows: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+            bad = []
+            for row in rows or []:
+                wrong = {}
+                for k, v in row.items():
+                    if k == "channels":
+                        wrong[k] = []  # violates M2M min selection
+                    elif k.endswith("_id") or k in {"participants_count", "daily_growth", "average_views", "order", "limit"}:
+                        wrong[k] = "NaN"  # wrong type for ints/IDs
+                    elif "email" in k:
+                        wrong[k] = "invalid@"
+                    elif "url" in k:
+                        wrong[k] = "http:/bad"
+                    elif "date" in k or "parsed_at" in k or "created_at" in k:
+                        wrong[k] = "not-a-date"
+                    elif isinstance(v, bool) or k.startswith("is_") or k.startswith("can_"):
+                        wrong[k] = "true"  # wrong type for booleans
+                    else:
+                        wrong[k] = ""  # empty string for required text
+                bad.append(wrong)
+            return bad[: self.gen.data_size]
+        self.gen.save_fixture(name, valid, _invalid_like(valid))
     # ---------- Model fixtures ----------
-
     def users_user(self) -> None:
         # username, first_name, last_name: short text without leading/trailing whitespace
-        usernames = self.gen.generate_text(self.rules['unlimited']['text'], max_len=30, remove_whitespace=True)
+        usernames = self.gen.generate_text(self.rules['unlimited']['text'], max_len=30, remove_whitespace=True, ensure_unique=True)
         first_names = self.gen.generate_text(self.rules['unlimited']['text'], max_len=20, remove_whitespace=True)
         last_names = self.gen.generate_text(self.rules['unlimited']['text'], max_len=20, remove_whitespace=True)
         emails = self.gen.generate_emails(self.rules['limited']['email'])
@@ -100,8 +107,8 @@ class ModelAndFormFixtureGenerator:
         creation_dates = self.gen.generate_datetime(self.rules['limited']['datetime'])
         last_messages = self.gen.generate_json_object()
         average_views = self.gen.generate_int(self.rules['unlimited']['int'], max_len=7)
-
-        n = self._min_len(channel_ids, usernames, titles, descriptions, participants, pinned, creation_dates, last_messages, average_views)
+        parsed_at = self.gen.generate_datetime(self.rules['limited']['datetime'])
+        n = self._min_len(channel_ids, usernames, titles, descriptions, participants, pinned, creation_dates, last_messages, average_views, parsed_at)
         valid = []
         for i in range(n):
             valid.append({
@@ -114,6 +121,7 @@ class ModelAndFormFixtureGenerator:
                 "creation_date": creation_dates[i],
                 "last_messages": last_messages[i],
                 "average_views": average_views[i],
+                "parsed_at": parsed_at[i],
             })
         self._save("model_parser__TelegramChannel", valid)
 
@@ -123,7 +131,8 @@ class ModelAndFormFixtureGenerator:
         flags = self.gen.generate_int(self.rules['unlimited']['int'], max_len=1)
         flags2 = self.gen.generate_int(self.rules['unlimited']['int'], max_len=1)
         flags3 = self.gen.generate_int(self.rules['unlimited']['int'], max_len=1)
-        n = min(len(user_ids), len(channel_ids), len(flags), len(flags2), len(flags3))
+        parsed_at = self.gen.generate_datetime(self.rules['limited']['datetime'])
+        n = min(len(user_ids), len(channel_ids), len(flags), len(flags2), len(flags3), len(parsed_at))
 
         seen_pairs = set()
         valid = []
@@ -139,6 +148,7 @@ class ModelAndFormFixtureGenerator:
                 "can_edit": bool(flags2[i] % 2),
                 "can_delete": bool(flags3[i] % 2),
                 "can_manage_moderators": bool((flags[i] + flags2[i]) % 2),
+                "created_at": parsed_at[i],
             })
         self._save("model_parser__ChannelModerator", valid)
 
@@ -166,9 +176,8 @@ class ModelAndFormFixtureGenerator:
         flags = self.gen.generate_int(self.rules['unlimited']['int'], max_len=1)
         orders = self.gen.generate_int(self.rules['unlimited']['int'], max_len=2)
         image_urls = self.gen.generate_urls(self.rules['limited']['url'])
-        # M2M: generate 3 channel IDs per group
-        m2m_pool = self.gen.generate_int(self.rules['unlimited']['int'], max_len=3)
-        n = self._min_len(names, descriptions, owner_ids, flags, orders, image_urls)
+        created = self.gen.generate_datetime(self.rules['limited']['datetime'])
+        n = self._min_len(names, descriptions, owner_ids, flags, orders, image_urls, created)
 
         def chunked(iterable, size):
             it = iter(iterable)
@@ -183,16 +192,25 @@ class ModelAndFormFixtureGenerator:
         if len(channels_lists) < n:
             channels_lists.extend(channels_lists[:n - len(channels_lists)])
 
+        def _slugify(text: str) -> str:
+            s = ''.join(ch.lower() if ch.isalnum() else '-' for ch in text).strip('-')
+            while '--' in s:
+                s = s.replace('--', '-')
+            return s[:60]  # model max_length
+
         valid = []
         for i in range(n):
+            name_i = names[i]
             valid.append({
-                "name": names[i],
+                "name": name_i,
+                "slug": _slugify(name_i),
                 "description": descriptions[i],
                 "owner_id": owner_ids[i],
                 "is_editorial": bool(flags[i] % 2),
                 "order": orders[i],
                 "channels": channels_lists[i],
                 "image_url": image_urls[i],
+                "created_at": created[i],
             })
         self._save("model_group_channels__Group", valid)
 
