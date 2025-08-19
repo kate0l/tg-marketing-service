@@ -1,15 +1,11 @@
-from random import choices
-from sys import maxunicode
 from rstr import xeger
 from re import sub
 import json
-from typing import Any
 import django.core.validators
 from django.core.exceptions import ValidationError
 import logging
 import os
 from datetime import datetime
-from config.users.models import ROLE_MAXLENGTH, BIO_MAXLENGTH  # for ModelFixtureGenerator
 
 logger = logging.getLogger(__name__)
 
@@ -22,7 +18,7 @@ INVALID_DATA_LEN = 20
 
 class DataValidator:
     @staticmethod
-    def validate_json_object(json_obj: Any) -> bool:
+    def validate_json_object(json_obj) -> bool:
         try:
             if isinstance(json_obj, (str, bytes, bytearray)):
                 json.loads(json_obj)
@@ -36,13 +32,15 @@ class DataValidator:
     @staticmethod
     def validate_url(url: str) -> bool:
         django.core.validators.URLValidator()(url)
-        return True
+        return True # URLValidator raises exception, so simply return True
+
     @staticmethod
     def validate_email(email: str) -> bool:
         django.core.validators.EmailValidator()(email)
-        return True
+        return True # EmailValidator raises exception, so simply return True
+
     @staticmethod
-    def validate_datetime(value: Any) -> bool:
+    def validate_datetime(value) -> bool:
         # accept datetime objects
         if isinstance(value, datetime):
             return True
@@ -102,51 +100,50 @@ class DataGenerator:
         validator - how the fixture is validated
         (for example func that receives fixture)
         '''
-        self.fixtures_generators = [
-            {
-                'name': 'urls',
+        self.fixtures_generators = {
+            'url': {
                 'generator': self.generate_urls,
                 'rule': self.rules['limited']['url'],
                 'data_type': str,
                 'validator': DataValidator.validate_url,
             },
-            {
-                'name': 'emails',
+            'email': {
                 'generator': self.generate_emails,
                 'rule': self.rules['limited']['email'],
                 'data_type': str,
                 'validator': DataValidator.validate_email,
             },
-            {
-                'name': 'text',
+            'text': {
                 'generator': self.generate_text,
                 'rule': self.rules['unlimited']['text'],
                 'data_type': str,
                 'validator': None,
             },
-            {
-                'name': 'int',
+            'int': {
                 'generator': self.generate_int,
                 'rule': self.rules['unlimited']['int'],
                 'data_type': int,
                 'validator': None,
             },
-            {
-                'name': 'datetime',
+            'datetime': {
                 'generator': self.generate_datetime,
                 'rule': self.rules['limited']['datetime'],
                 'data_type': str,
                 'validator': DataValidator.validate_datetime,
             },
-            {
-                'name': 'json',
+            'json': {
                 'generator': self.generate_json_object,
                 'rule': None,
                 'data_type': object,
                 'validator': DataValidator.validate_json_object
             },
-        ]
-
+            'invalid': {
+                'generator': self.generate_invalid_data,
+                'rule': None,
+                'data_type': None,
+                'validator': None # in future use it for injextions, xss attacks etc
+            }
+        }
 
     # max len is for fixtures which len is controlled by changeable code in forms etc.
     # for exmaple email regex has len
@@ -158,7 +155,7 @@ class DataGenerator:
         validator: object = None,
         remove_whitespace: bool = True,
         ensure_unique: bool = False, # for fields on models that are unique
-        max_attempts_multiplier: int = 20,
+        max_attempts_multiplier: int = 20, # just some OK number
     ) -> tuple:
         data = []
         if not isinstance(rgx, str):
@@ -198,30 +195,36 @@ class DataGenerator:
                 data.append(elem)
         return tuple(data)
 
-    # kwargs because there is too many args
+    # kwargs because there is too many args and just accept all of them
     def generate_urls(self, rule: str, data_type=str, validator=None, **kwargs) -> tuple:
+        # sadly, cannot do generate_urls(self, rule: str=self.fixture_generators),
+        # because self is not imported yet
+        rule = self.fixtures_generators['url']['rule'] if not rule else rule
         return self._generate_data(rule, data_type=data_type, validator=validator, **kwargs)
 
     def generate_emails(self, rule: str, data_type=str, validator=None, **kwargs) -> tuple:
         # ensure uniqueness for models like users.User.email (unique=True)
-        kwargs.setdefault('ensure_unique', True)
-        return self._generate_data(rule, data_type=data_type, validator=validator, **kwargs)
+        rule = self.fixtures_generators['email']['rule'] if not rule else rule
+        return self._generate_data(rule, data_type=data_type, validator=validator, ensure_unique=True, **kwargs)
 
     def generate_text(self, rule: str, data_type=str, validator=None, max_len=DEFAULT_TEXT_LEN, **kwargs) -> tuple:
         # keep whitespace in text
-        kwargs.setdefault('remove_whitespace', False)
-        return self._generate_data(rule, max_len=max_len, data_type=data_type, validator=validator, **kwargs)
+        rule = self.fixtures_generators['text']['rule'] if not rule else rule
+        return self._generate_data(rule, max_len=max_len, data_type=data_type, validator=validator, remove_whitespace=False, **kwargs)
 
     def generate_datetime(self, rule: str, data_type=str, validator=None, **kwargs) -> tuple:
         # by default keep whitespace as-is for datetime strings
-        kwargs.setdefault('remove_whitespace', False)
-        return self._generate_data(rule, data_type=data_type, validator=validator, **kwargs)
+        rule = self.fixtures_generators['datetime']['rule'] if not rule else rule
+        return self._generate_data(rule, data_type=data_type, validator=validator, remove_whitespace=False, **kwargs)
 
     def generate_int(self, rule: str, data_type=int, validator=None, max_len=DEFAULT_INT_LEN, **kwargs) -> tuple:
+        rule = self.fixtures_generators['int']['rule'] if not rule else rule
         return self._generate_data(rule, max_len=max_len, data_type=data_type, validator=validator, **kwargs)
 
-    def generate_json_object(self, rule=None, data_type=object, validator=None) -> tuple:
+    def generate_json_object(self, rule: str=None, data_type=object, validator=None, **kwargs) -> tuple:
         # a list of dicts
+        if rule:
+            ... # honestly i have no energy for this. regex for json is too big for now
         def rand_str(max_line_len: int = DEFAULT_TEXT_LEN) -> str:
             # random printable string without leading/trailing whitespace
             s = xeger(self.rules['unlimited']['text'] + '{1,' + str(max_line_len) + '}')
@@ -238,11 +241,11 @@ class DataGenerator:
             json_obj = tuple(filtered) if filtered else tuple([[{"x": "y"}]] * self.data_size)
         return json_obj
 
-    def generate_invalid_data(self, rule=None, max_len=INVALID_DATA_LEN):
+    def generate_invalid_data(self, rule: str=None, max_len=INVALID_DATA_LEN):
         # random data with choices (random)
         # only restriction is data_size
-        rgx = f'(?:{rule}){{1,{max_len}}}'
-        return tuple(xeger(rgx) for _ in range(self.data_size))
+        rule = f"{self.fixtures_generators['invalid']['rule']}{{1,{max_len}}}" if not rule else rule
+        return tuple(xeger(rule) for _ in range(self.data_size))
 
     def generate_fixtures(self) -> None:
         '''
@@ -273,17 +276,3 @@ class DataGenerator:
             # default=str handles datetime objects
             json.dump(data, f, ensure_ascii=False, indent=2, default=str)
         return None
-
-
-class ModelFixtureGenerator:
-    '''
-    fixtures based on models,
-    made by DataGenerator class
-    '''
-    def __init__(self, num_of_fixtures=NUM_OF_FIXTURES) -> None:
-        self.generator = DataGenerator(num_of_fixtures)
-
-    ...
-
-if __name__ == '__main__':
-    ModelFixtureGenerator(NUM_OF_FIXTURES).generate_fixtures()
