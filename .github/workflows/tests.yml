@@ -35,6 +35,17 @@ jobs:
           uv pip install --system .
           uv pip install --system pytest pytest-cov
 
+      - name: Generate fixtures
+        env:
+          DJANGO_SETTINGS_MODULE: config.settings
+          DATABASE_URL: ${{ secrets.DB_URL }}
+          SECRET_KEY: ${{ secrets.SECRET_KEY }}
+          TELEGRAM_API_ID: ${{ secrets.TELEGRAM_API_ID }}
+          TELEGRAM_API_HASH: ${{ secrets.TELEGRAM_API_HASH }}
+          TELEGRAM_SESSION_STRING: ${{ secrets.TELEGRAM_SESSION_STRING }}
+        run: |
+          uv run python3 -c "from tests.generate_fixtures import ModelAndFormFixtureGenerator; ModelAndFormFixtureGenerator().generate_all()"
+
       - name: Run tests
         env:
           DJANGO_SETTINGS_MODULE: config.settings
