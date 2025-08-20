@@ -183,38 +183,40 @@ class DataGenerator:
             if ensure_unique and elem not in seen:
                 seen.add(elem)
 
-            try:
-                validator(elem)
-            except ValidationError as e:
-                logger.warning(f'Validation by {validator} failed: {e}')
-            # if validator is not present, not a func etc - let it raise Exception
-            else:  # if everything OK, add
+            valid = True
+            if callable(validator):
+                try:
+                    validator(elem)
+                except ValidationError as e:
+                    logger.warning(f'Validation by {validator} failed: {e}')
+                    valid = False
+            if valid:
                 data.append(elem)
         return tuple(data)
 
     # kwargs because there is too many args and just accept all of them
-    def generate_urls(self, rule: str, data_type=str, validator=None, **kwargs) -> tuple:
+    def generate_urls(self, rule: str=None, data_type=str, validator=None, **kwargs) -> tuple:
         # sadly, cannot do generate_urls(self, rule: str=self.fixture_generators),
         # because self is not imported yet
         rule = self.fixtures_generators['url']['rule'] if rule is None else rule
         return self._generate_data(rule, data_type=data_type, validator=validator, **kwargs)
 
-    def generate_emails(self, rule: str, data_type=str, validator=None, **kwargs) -> tuple:
+    def generate_emails(self, rule: str=None, data_type=str, validator=None, **kwargs) -> tuple:
         # ensure uniqueness for models like users.User.email (unique=True)
         rule = self.fixtures_generators['email']['rule'] if rule is None else rule
         return self._generate_data(rule, data_type=data_type, validator=validator, ensure_unique=True, **kwargs)
 
-    def generate_text(self, rule: str, data_type=str, validator=None, max_len=DEFAULT_TEXT_LEN, **kwargs) -> tuple:
+    def generate_text(self, rule: str=None, data_type=str, validator=None, max_len=DEFAULT_TEXT_LEN, **kwargs) -> tuple:
         # keep whitespace in text
         rule = self.fixtures_generators['text']['rule'] if rule is None else rule
         return self._generate_data(rule, max_len=max_len, data_type=data_type, validator=validator, remove_whitespace=False, **kwargs)
 
-    def generate_datetime(self, rule: str, data_type=str, validator=None, **kwargs) -> tuple:
+    def generate_datetime(self, rule: str=None, data_type=str, validator=None, **kwargs) -> tuple:
         # by default keep whitespace as-is for datetime strings
         rule = self.fixtures_generators['datetime']['rule'] if rule is None else rule
         return self._generate_data(rule, data_type=data_type, validator=validator, remove_whitespace=False, **kwargs)
 
-    def generate_int(self, rule: str, data_type=int, validator=None, max_len=DEFAULT_INT_LEN, **kwargs) -> tuple:
+    def generate_int(self, rule: str=None, data_type=int, validator=None, max_len=DEFAULT_INT_LEN, **kwargs) -> tuple:
         rule = self.fixtures_generators['int']['rule'] if rule is None else rule
         return self._generate_data(rule, max_len=max_len, data_type=data_type, validator=validator, **kwargs)
 
