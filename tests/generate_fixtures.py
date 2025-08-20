@@ -1,353 +1,358 @@
-from typing import List, Dict, Any
-from itertools import islice
+from typing import Dict, List, Tuple, Any
+import logging
 
-from tests.data_generator import DataGenerator, NUM_OF_FIXTURES, ROLE_MAXLENGTH, BIO_MAXLENGTH
+from tests.data_generator import DataGenerator, NUM_OF_FIXTURES
+
+# Avoid importing Django app modules (which may require settings/db) just to get constants.
+# Use project defaults, falling back safely if not importable.
+from config.users.models import ROLE_MAXLENGTH, BIO_MAXLENGTH
+
+logger = logging.getLogger(__name__)
 
 
 class ModelAndFormFixtureGenerator:
-    """
-    Builds model and form payload fixtures using only DataGenerator.
-    Assumptions:
-      - FK fields are represented as integer IDs (placeholders).
-      - M2M fields are represented as lists of integer IDs.
-      - save_fixture writes {"valid": [...], "invalid": [...]} JSON files.
-    """
+    '''
+    class to actually generate fixtures for forms and models
+    why new class and not a script? so that can configure in future
+    not all models and forms present, because some of them require foreign key etc.
+    in future, need to connect to present DB or make local SQLite, populate it and test via it
+    '''
     def __init__(self, num: int = NUM_OF_FIXTURES) -> None:
         self.gen = DataGenerator(num)
-        # convenience shorthands
-        self.rules = self.gen.rules
+        self.size = self.gen.data_size
 
-    @staticmethod
-    def _min_len(*seqs) -> int:
-        return min(len(s) for s in seqs if hasattr(s, '__len__') and len(s) is not None) if seqs else 0
+    def _compose(self, field_values: Dict[str, Tuple[Any, ...]]) -> Tuple[Dict[str, Any], ...]:
+        '''
+        Compose list of dicts from generated data
+        '''
+        size = self.size
+        keys = list(field_values.keys())
+        records: List[Dict[str, Any]] = []
+        for i in range(size):
+            rec = {}
+            for k in keys:
+                vals = field_values[k]
+                rec[k] = vals[i] if i < len(vals) else None
+            records.append(rec)
+        return tuple(records)
 
-    def _save(self, name: str, valid: List[Dict[str, Any]]) -> None:
-        # Build shape-consistent invalid payloads
-        def _invalid_like(rows: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
-            bad = []
-            for row in rows or []:
-                wrong = {}
-                for k, v in row.items():
-                    if k == "channels":
-                        wrong[k] = []  # violates M2M min selection
-                    elif k.endswith("_id") or k in {"participants_count", "daily_growth", "average_views", "order", "limit"}:
-                        wrong[k] = "NaN"  # wrong type for ints/IDs
-                    elif "email" in k:
-                        wrong[k] = "invalid@"
-                    elif "url" in k:
-                        wrong[k] = "http:/bad"
-                    elif "date" in k or "parsed_at" in k or "created_at" in k:
-                        wrong[k] = "not-a-date"
-                    elif isinstance(v, bool) or k.startswith("is_") or k.startswith("can_"):
-                        wrong[k] = "true"  # wrong type for booleans
-                    else:
-                        wrong[k] = ""  # empty string for required text
-                bad.append(wrong)
-            return bad[: self.gen.data_size]
-        self.gen.save_fixture(name, valid, _invalid_like(valid))
-    # ---------- Model fixtures ----------
-    def users_user(self) -> None:
-        # username, first_name, last_name: short text without leading/trailing whitespace
-        usernames = self.gen.generate_text(self.rules['unlimited']['text'], max_len=30, remove_whitespace=True, ensure_unique=True)
-        first_names = self.gen.generate_text(self.rules['unlimited']['text'], max_len=20, remove_whitespace=True)
-        last_names = self.gen.generate_text(self.rules['unlimited']['text'], max_len=20, remove_whitespace=True)
-        emails = self.gen.generate_emails(self.rules['limited']['email'])
-        bios = self.gen.generate_text(self.rules['unlimited']['text'], max_len=BIO_MAXLENGTH)
-        roles = self.gen.generate_text(self.rules['unlimited']['text'], max_len=ROLE_MAXLENGTH, remove_whitespace=True)
-        avatars = self.gen.generate_urls(self.rules['limited']['url'])
+    # make invalid data (its only strings, so _invalid_strings)
+    def _invalid_strings(self) -> Tuple[str, ...]:
+        return self.gen.generate_invalid_data()
 
-        n = self._min_len(usernames, first_names, last_names, emails, bios, roles, avatars)
-        valid = []
-        for i in range(n):
-            valid.append({
-                "username": usernames[i],
-                "first_name": first_names[i],
-                "last_name": last_names[i],
-                "email": emails[i],
-                "bio": bios[i],
-                "role": roles[i],
-                "avatar_image": avatars[i],
-                # Other AbstractUser fields may be set by defaults when actually saved to DB.
+    # generate again
+    def _repeat(self, value: Any) -> Tuple[Any, ...]:
+        return tuple(value for _ in range(self.size))
+
+    # Models
+    def model_users_user(self) -> None:
+        '''
+        fixtures for users.User model
+        required: username (text, unique, 1-150), email (email, unique, blank allowed but generate), role (text, 1-150)
+        optional: first_name (text), last_name (text), bio (text, 1-200), avatar_image (url)
+        '''
+        # usernames unique
+        usernames = self.gen.generate_text(max_len=150, ensure_unique=True)
+        # emails unique and valid
+        emails = self.gen.generate_emails(rule=None)
+        # role and bio lengths
+        roles = self.gen.generate_text(max_len=ROLE_MAXLENGTH)
+        bios = self.gen.generate_text(max_len=BIO_MAXLENGTH)
+        # avatar image (URL)
+        avatars = self.gen.generate_urls(rule=None)
+        # names - simple text
+        first_names = self.gen.generate_text(max_len=50)
+        last_names = self.gen.generate_text(max_len=50)
+        # password placeholder (not hashed; for fixtures only)
+        passwords = self.gen.generate_text(max_len=50)
+
+        valid = self._compose({
+            'username': usernames,
+            'email': emails,
+            'role': roles,
+            'bio': bios,
+            'avatar_image': avatars,
+            'first_name': first_names,
+            'last_name': last_names,
+            'password': passwords,
+        })
+
+        # Invalid: empty username, invalid email, too-long role and bio, non-url avatar image
+        invalid = []
+        too_long_role = ('a' * (ROLE_MAXLENGTH + 5))
+        too_long_bio = ('b' * (BIO_MAXLENGTH + 5))
+        invalid_email = self._invalid_strings()
+        invalid_avatar = self._invalid_strings()
+        for i in range(self.size):
+            invalid.append({
+                'username': '' if i % 2 == 0 else ' ',  # required -> invalid
+                'email': invalid_email[i] if i < len(invalid_email) else 'not-an-email',
+                'role': too_long_role,
+                'bio': too_long_bio,
+                'avatar_image': invalid_avatar[i] if i < len(invalid_avatar) else 'not-a-url',
+                'first_name': '',
+                'last_name': '',
+                'password': '',  # empty password
             })
-        self._save("model_users__User", valid)
 
-    def users_partnerprofile(self) -> None:
-        # user_id placeholders
-        user_ids = self.gen.generate_int(self.rules['unlimited']['int'], max_len=3, ensure_unique=True)
-        # status choices mapped via ints
-        statuses = ['active', 'pending', 'rejected', 'suspended']
-        status_idxs = self.gen.generate_int(self.rules['unlimited']['int'], max_len=2)
-        # partner_since datetime strings
-        partner_since = self.gen.generate_datetime(self.rules['limited']['datetime'])
-        # balance as decimal-like string built from integers
-        cents = self.gen.generate_int(self.rules['unlimited']['int'], max_len=5)
-        payment_details = self.gen.generate_text(self.rules['unlimited']['text'], max_len=120)
-        partner_codes = self.gen.generate_text(self.rules['unlimited']['text'], max_len=30, remove_whitespace=True, ensure_unique=True)
+        self.gen.save_fixture('model_users_user', valid, tuple(invalid))
 
-        n = self._min_len(user_ids, status_idxs, partner_since, cents, payment_details, partner_codes)
-        valid = []
-        for i in range(n):
-            valid.append({
-                "user_id": user_ids[i],
-                "status": statuses[status_idxs[i] % len(statuses)],
-                "partner_since": partner_since[i],
-                "balance": f"{cents[i] / 100:.2f}",
-                "payment_details": payment_details[i],
-                "partner_code": partner_codes[i],
-            })
-        self._save("model_users__PartnerProfile", valid)
-
-    def parser_telegramchannel(self) -> None:
-        channel_ids = self.gen.generate_int(self.rules['unlimited']['int'], max_len=12, ensure_unique=True)
-        usernames = self.gen.generate_text(self.rules['unlimited']['text'], max_len=20, remove_whitespace=True)
-        titles = self.gen.generate_text(self.rules['unlimited']['text'], max_len=50, remove_whitespace=True)
-        descriptions = self.gen.generate_text(self.rules['unlimited']['text'], max_len=200)
-        participants = self.gen.generate_int(self.rules['unlimited']['int'], max_len=7)
+    def model_parser_telegram_channel(self) -> None:
+        '''
+        fixtures for parser.TelegramChannel model
+        required: channel_id (bigint unique), title (text, 1-255), participants_count (int), parsed_at (datetime auto)
+        optional: username (text, 0-255, can be blank), description (text), pinned_messages (json), creation_date (datetime),
+                  last_messages (json), average_views (int)
+        '''
+        # unique channel ids, up to 12 digits
+        channel_ids = self.gen.generate_int(max_len=12, ensure_unique=True)
+        titles = self.gen.generate_text(max_len=255)
+        usernames = self.gen.generate_text(max_len=255)
+        descriptions = self.gen.generate_text(max_len=300)
+        participants = self.gen.generate_int(max_len=6)
+        parsed_at = self.gen.generate_datetime(rule=None)
         pinned = self.gen.generate_json_object()
-        creation_dates = self.gen.generate_datetime(self.rules['limited']['datetime'])
+        creation_date = self.gen.generate_datetime(rule=None)
         last_messages = self.gen.generate_json_object()
-        average_views = self.gen.generate_int(self.rules['unlimited']['int'], max_len=7)
-        parsed_at = self.gen.generate_datetime(self.rules['limited']['datetime'])
-        n = self._min_len(channel_ids, usernames, titles, descriptions, participants, pinned, creation_dates, last_messages, average_views, parsed_at)
-        valid = []
-        for i in range(n):
-            valid.append({
-                "channel_id": channel_ids[i],
-                "username": usernames[i],
-                "title": titles[i],
-                "description": descriptions[i],
-                "participants_count": participants[i],
-                "pinned_messages": pinned[i],
-                "creation_date": creation_dates[i],
-                "last_messages": last_messages[i],
-                "average_views": average_views[i],
-                "parsed_at": parsed_at[i],
+        avg_views = self.gen.generate_int(max_len=6)
+
+        valid = self._compose({
+            'channel_id': channel_ids,
+            'title': titles,
+            'username': usernames,
+            'description': descriptions,
+            'participants_count': participants,
+            'parsed_at': parsed_at,
+            'pinned_messages': pinned,
+            'creation_date': creation_date,
+            'last_messages': last_messages,
+            'average_views': avg_views,
+        })
+
+        # invalid set: non-int channel_id, empty title, invalid datetime/json, non-int counts
+        invalid_strs = self._invalid_strings()
+        invalid_dt = self._invalid_strings()
+        invalid = []
+        for i in range(self.size):
+            invalid.append({
+                'channel_id': invalid_strs[i] if i < len(invalid_strs) else 'abc',  # should be int
+                'title': '',  # required -> invalid
+                'username': None,
+                'description': None,
+                'participants_count': invalid_strs[i] if i < len(invalid_strs) else 'n/a',  # should be int
+                'parsed_at': invalid_dt[i] if i < len(invalid_dt) else '2020-13-40 99:99',  # invalid dt
+                'pinned_messages': 'not-json',
+                'creation_date': '31-31-2020',
+                'last_messages': 'not-json',
+                'average_views': 'views',
             })
-        self._save("model_parser__TelegramChannel", valid)
+        self.gen.save_fixture('model_parser_telegram_channel', valid, tuple(invalid))
 
-    def parser_channelmoderator(self) -> None:
-        user_ids = self.gen.generate_int(self.rules['unlimited']['int'], max_len=3)
-        channel_ids = self.gen.generate_int(self.rules['unlimited']['int'], max_len=3)
-        flags = self.gen.generate_int(self.rules['unlimited']['int'], max_len=1)
-        flags2 = self.gen.generate_int(self.rules['unlimited']['int'], max_len=1)
-        flags3 = self.gen.generate_int(self.rules['unlimited']['int'], max_len=1)
-        parsed_at = self.gen.generate_datetime(self.rules['limited']['datetime'])
-        n = min(len(user_ids), len(channel_ids), len(flags), len(flags2), len(flags3), len(parsed_at))
-
-        seen_pairs = set()
-        valid = []
-        for i in range(n):
-            pair = (user_ids[i], channel_ids[i])
-            if pair in seen_pairs:
-                continue
-            seen_pairs.add(pair)
-            valid.append({
-                "user_id": user_ids[i],
-                "channel_id": channel_ids[i],
-                "is_owner": bool(flags[i] % 2),
-                "can_edit": bool(flags2[i] % 2),
-                "can_delete": bool(flags3[i] % 2),
-                "can_manage_moderators": bool((flags[i] + flags2[i]) % 2),
-                "created_at": parsed_at[i],
+    # Forms
+    def form_user_login(self) -> None:
+        # username (text), password (text)
+        usernames = self.gen.generate_text(max_len=150, ensure_unique=True)
+        passwords = self.gen.generate_text(max_len=50)
+        valid = self._compose({
+            'username': usernames,
+            'password': passwords,
+        })
+        invalid = []
+        for _ in range(self.size):
+            invalid.append({
+                'username': '',
+                'password': '',
             })
-        self._save("model_parser__ChannelModerator", valid)
+        self.gen.save_fixture('form_user_login', valid, tuple(invalid))
 
-    def parser_channelstats(self) -> None:
-        channel_ids = self.gen.generate_int(self.rules['unlimited']['int'], max_len=4)
-        participants = self.gen.generate_int(self.rules['unlimited']['int'], max_len=7)
-        daily_growth = self.gen.generate_int(self.rules['unlimited']['int'], max_len=5)
-        parsed_at = self.gen.generate_datetime(self.rules['limited']['datetime'])
+    def form_user_reg(self) -> None:
+        # first_name (text), last_name (text), username(text), password1 (text), password2 (text),
+        # email (email), bio (text, can be blank), terms (bool), avatar_image (url)
+        first_names = self.gen.generate_text(max_len=50)
+        last_names = self.gen.generate_text(max_len=50)
+        usernames = self.gen.generate_text(max_len=150, ensure_unique=True)
+        # keep passwords equal for validity
+        pw = self.gen.generate_text(max_len=50)
+        emails = self.gen.generate_emails(rule=None)
+        bios = self.gen.generate_text(max_len=BIO_MAXLENGTH)
+        avatars = self.gen.generate_urls(rule=None)
+        terms_true = self._repeat(True)
 
-        n = self._min_len(channel_ids, participants, daily_growth, parsed_at)
-        valid = []
-        for i in range(n):
-            valid.append({
-                "channel_id": channel_ids[i],
-                "participants_count": participants[i],
-                "daily_growth": daily_growth[i],
-                "parsed_at": parsed_at[i],
+        valid = self._compose({
+            'first_name': first_names,
+            'last_name': last_names,
+            'username': usernames,
+            'password1': pw,
+            'password2': pw,
+            'email': emails,
+            'bio': bios,
+            'terms': terms_true,
+            'avatar_image': avatars,
+        })
+
+        invalid_email = self._invalid_strings()
+        invalid_avatar = self._invalid_strings()
+        invalid = []
+        for i in range(self.size):
+            invalid.append({
+                'first_name': '',
+                'last_name': '',
+                'username': '',
+                'password1': 'password123',
+                'password2': 'different',  # mismatch
+                'email': invalid_email[i] if i < len(invalid_email) else 'not-an-email',
+                'bio': 'x' * (BIO_MAXLENGTH + 20),  # too long
+                'terms': False,  # required True
+                'avatar_image': invalid_avatar[i] if i < len(invalid_avatar) else 'not-a-url',
             })
-        self._save("model_parser__ChannelStats", valid)
+        self.gen.save_fixture('form_user_reg', valid, tuple(invalid))
 
-    def group_channels_group(self) -> None:
-        names = self.gen.generate_text(self.rules['unlimited']['text'], max_len=50, remove_whitespace=True, ensure_unique=True)
-        descriptions = self.gen.generate_text(self.rules['unlimited']['text'], max_len=200)
-        owner_ids = self.gen.generate_int(self.rules['unlimited']['int'], max_len=3)
-        flags = self.gen.generate_int(self.rules['unlimited']['int'], max_len=1)
-        orders = self.gen.generate_int(self.rules['unlimited']['int'], max_len=2)
-        image_urls = self.gen.generate_urls(self.rules['limited']['url'])
-        created = self.gen.generate_datetime(self.rules['limited']['datetime'])
-        n = self._min_len(names, descriptions, owner_ids, flags, orders, image_urls, created)
+    def form_user_update(self) -> None:
+        # mirrors UserUpdateForm fields as defined in forms.py
+        # first_name (text), last_name (text), username(text),
+        # password1 (text), password2 (text), email (email), bio (text), avatar_image (url)
+        first_names = self.gen.generate_text(max_len=50)
+        last_names = self.gen.generate_text(max_len=50)
+        usernames = self.gen.generate_text(max_len=150, ensure_unique=True)
+        pw = self.gen.generate_text(max_len=50)
+        emails = self.gen.generate_emails(rule=None)
+        bios = self.gen.generate_text(max_len=BIO_MAXLENGTH)
+        avatars = self.gen.generate_urls(rule=None)
 
-        def chunked(iterable, size):
-            it = iter(iterable)
-            while True:
-                chunk = list(islice(it, size))
-                if not chunk:
-                    break
-                yield chunk
+        valid = self._compose({
+            'first_name': first_names,
+            'last_name': last_names,
+            'username': usernames,
+            'password1': pw,
+            'password2': pw,
+            'email': emails,
+            'bio': bios,
+            'avatar_image': avatars,
+        })
 
-        # Ensure enough for n groups
-        channels_lists = list(chunked(list(m2m_pool) * 3, 3))  # replicate pool to get enough chunks
-        if len(channels_lists) < n:
-            channels_lists.extend(channels_lists[:n - len(channels_lists)])
-
-        def _slugify(text: str) -> str:
-            s = ''.join(ch.lower() if ch.isalnum() else '-' for ch in text).strip('-')
-            while '--' in s:
-                s = s.replace('--', '-')
-            return s[:60]  # model max_length
-
-        valid = []
-        for i in range(n):
-            name_i = names[i]
-            valid.append({
-                "name": name_i,
-                "slug": _slugify(name_i),
-                "description": descriptions[i],
-                "owner_id": owner_ids[i],
-                "is_editorial": bool(flags[i] % 2),
-                "order": orders[i],
-                "channels": channels_lists[i],
-                "image_url": image_urls[i],
-                "created_at": created[i],
+        invalid_email = self._invalid_strings()
+        invalid = []
+        for i in range(self.size):
+            invalid.append({
+                'first_name': '',
+                'last_name': '',
+                'username': '',
+                'password1': 'short',
+                'password2': 'short-but-diff',
+                'email': invalid_email[i] if i < len(invalid_email) else 'invalid',
+                'bio': 'y' * (BIO_MAXLENGTH + 1),
+                'avatar_image': 'no-url',
             })
-        self._save("model_group_channels__Group", valid)
+        self.gen.save_fixture('form_user_update', valid, tuple(invalid))
 
-    # ---------- Form fixtures ----------
+    def form_user_avatar_change(self) -> None:
+        # avatar_image (url) required=False but provide valid urls
+        avatars = self.gen.generate_urls(rule=None)
+        valid = self._compose({'avatar_image': avatars})
+        invalid = self._compose({'avatar_image': self._invalid_strings()})
+        self.gen.save_fixture('form_user_avatar_change', valid, invalid)
 
-    def form_users_userlogin(self) -> None:
-        usernames = self.gen.generate_text(self.rules['unlimited']['text'], max_len=30, remove_whitespace=True)
-        passwords = self.gen.generate_text(self.rules['unlimited']['text'], max_len=20, remove_whitespace=True)
-        n = self._min_len(usernames, passwords)
-        valid = [{"username": usernames[i], "password": passwords[i]} for i in range(n)]
-        self._save("form_users__UserLoginForm", valid)
+    def form_restore_password_request(self) -> None:
+        # email (email)
+        emails = self.gen.generate_emails(rule=None)
+        valid = self._compose({'email': emails})
+        invalid = self._compose({'email': self._invalid_strings()})
+        self.gen.save_fixture('form_restore_password_request', valid, invalid)
 
-    def form_users_userreg(self) -> None:
-        first_names = self.gen.generate_text(self.rules['unlimited']['text'], max_len=20, remove_whitespace=True)
-        last_names = self.gen.generate_text(self.rules['unlimited']['text'], max_len=20, remove_whitespace=True)
-        usernames = self.gen.generate_text(self.rules['unlimited']['text'], max_len=30, remove_whitespace=True)
-        emails = self.gen.generate_emails(self.rules['limited']['email'])
-        bios = self.gen.generate_text(self.rules['unlimited']['text'], max_len=BIO_MAXLENGTH)
-        avatars = self.gen.generate_urls(self.rules['limited']['url'])
-        passwords = self.gen.generate_text(self.rules['unlimited']['text'], max_len=20, remove_whitespace=True)
+    def form_restore_password(self) -> None:
+        # new_password1 (text), new_password2 (text)
+        pw = self.gen.generate_text(max_len=50)
+        valid = self._compose({
+            'new_password1': pw,
+            'new_password2': pw,
+        })
+        invalid = self._compose({
+            'new_password1': self.gen.generate_text(max_len=10),  # len 10
+            'new_password2': self.gen.generate_text(max_len=12),  # not same len
+        })
+        self.gen.save_fixture('form_restore_password', valid, invalid)
 
-        n = min(map(len, [first_names, last_names, usernames, emails, bios, avatars, passwords]))
-        valid = []
-        for i in range(n):
-            pwd = passwords[i]
-            valid.append({
-                "first_name": first_names[i],
-                "last_name": last_names[i],
-                "username": usernames[i],
-                "email": emails[i],
-                "bio": bios[i],
-                "avatar_image": avatars[i],
-                "password1": pwd,
-                "password2": pwd,
-                "terms": True,
+    def form_group_create(self) -> None:
+        # name (text, 1-150), description (text, optional), image_url (url)
+        names = self.gen.generate_text(max_len=150, ensure_unique=True)
+        descriptions = self.gen.generate_text(max_len=200)
+        images = self.gen.generate_urls(rule=None)
+
+        valid = self._compose({
+            'name': names,
+            'description': descriptions,
+            'image_url': images,
+        })
+
+        invalid = []
+        invalid_img = self._invalid_strings()
+        for i in range(self.size):
+            invalid.append({
+                'name': '',  # required
+                'description': 'z' * 1000,  # overly long, tho not really invalid, but assume like 1000 url is not real
+                'image_url': invalid_img[i] if i < len(invalid_img) else 'invalid',
             })
-        self._save("form_users__UserRegForm", valid)
+        self.gen.save_fixture('form_group_create', valid, tuple(invalid))
 
-    def form_users_userupdate(self) -> None:
-        first_names = self.gen.generate_text(self.rules['unlimited']['text'], max_len=20, remove_whitespace=True)
-        last_names = self.gen.generate_text(self.rules['unlimited']['text'], max_len=20, remove_whitespace=True)
-        usernames = self.gen.generate_text(self.rules['unlimited']['text'], max_len=30, remove_whitespace=True)
-        emails = self.gen.generate_emails(self.rules['limited']['email'])
-        bios = self.gen.generate_text(self.rules['unlimited']['text'], max_len=BIO_MAXLENGTH)
-        avatars = self.gen.generate_urls(self.rules['limited']['url'])
-        passwords = self.gen.generate_text(self.rules['unlimited']['text'], max_len=20, remove_whitespace=True)
+    def form_group_update(self) -> None:
+        # same fields as create
+        names = self.gen.generate_text(max_len=150, ensure_unique=True)
+        descriptions = self.gen.generate_text(max_len=200)
+        images = self.gen.generate_urls(rule=None)
 
-        n = min(map(len, [first_names, last_names, usernames, emails, bios, avatars, passwords]))
-        valid = []
-        for i in range(n):
-            pwd = passwords[i]
-            valid.append({
-                "first_name": first_names[i],
-                "last_name": last_names[i],
-                "username": usernames[i],
-                "email": emails[i],
-                "bio": bios[i],
-                "avatar_image": avatars[i],
-                "password1": pwd,
-                "password2": pwd,
+        valid = self._compose({
+            'name': names,
+            'description': descriptions,
+            'image_url': images,
+        })
+
+        invalid = []
+        for _ in range(self.size):
+            invalid.append({
+                'name': '',
+                'description': '',
+                'image_url': 'not-a-url',
             })
-        self._save("form_users__UserUpdateForm", valid)
+        self.gen.save_fixture('form_group_update', valid, tuple(invalid))
 
-    def form_users_avatarchange(self) -> None:
-        avatars = self.gen.generate_urls(self.rules['limited']['url'])
-        valid = [{"avatar_image": u} for u in avatars]
-        self._save("form_users__AvatarChange", valid)
+    def form_parser_channel_parse(self) -> None:
+        # channel_identifier (text, 1-255), limit (int, 1-20)
+        identifiers = self.gen.generate_text(max_len=255)
+        # produce ints using generator and make no bigger than 20
+        raw_ints = self.gen.generate_int(max_len=3)
+        limits = tuple(1 + (abs(n) % 20) for n in raw_ints)
 
-    def form_users_restore_password_request(self) -> None:
-        emails = self.gen.generate_emails(self.rules['limited']['email'])
-        valid = [{"email": e} for e in emails]
-        self._save("form_users__RestorePasswordRequestForm", valid)
+        valid = self._compose({
+            'channel_identifier': identifiers,
+            'limit': limits,
+        })
 
-    def form_users_restore_password(self) -> None:
-        passwords = self.gen.generate_text(self.rules['unlimited']['text'], max_len=20, remove_whitespace=True)
-        n = len(passwords)
-        valid = [{"new_password1": passwords[i], "new_password2": passwords[i]} for i in range(n)]
-        self._save("form_users__RestorePasswordForm", valid)
+        # invalid: empty identifier, limit out of range
+        invalid_limits = []
+        for i in range(self.size):
+            invalid_limits.append(0 if i % 2 == 0 else 99)
+        invalid = self._compose({
+            'channel_identifier': self._repeat(''),
+            'limit': tuple(invalid_limits),
+        })
+        self.gen.save_fixture('form_parser_channel_parse', valid, invalid)
 
-    def form_parser_channelparse(self) -> None:
-        identifiers = self.gen.generate_text(self.rules['unlimited']['text'], max_len=50, remove_whitespace=True)
-        limits = self.gen.generate_int(self.rules['unlimited']['int'], max_len=2)
-        n = min(len(identifiers), len(limits))
-        valid = [{"channel_identifier": identifiers[i], "limit": min(max(limits[i], 1), 20)} for i in range(n)]
-        self._save("form_parser__ChannelParseForm", valid)
-
-    def form_group_channels_creategroup(self) -> None:
-        # Use model's stricter limits (name <= 50, description <= 200)
-        names = self.gen.generate_text(self.rules['unlimited']['text'], max_len=50, remove_whitespace=True)
-        descriptions = self.gen.generate_text(self.rules['unlimited']['text'], max_len=200)
-        images = self.gen.generate_urls(self.rules['limited']['url'])
-        n = self._min_len(names, descriptions, images)
-        valid = [{"name": names[i], "description": descriptions[i], "image_url": images[i]} for i in range(n)]
-        self._save("form_group_channels__CreateGroupForm", valid)
-
-    def form_group_channels_updategroup(self) -> None:
-        names = self.gen.generate_text(self.rules['unlimited']['text'], max_len=50, remove_whitespace=True)
-        descriptions = self.gen.generate_text(self.rules['unlimited']['text'], max_len=200)
-        images = self.gen.generate_urls(self.rules['limited']['url'])
-        n = self._min_len(names, descriptions, images)
-        valid = [{"name": names[i], "description": descriptions[i], "image_url": images[i]} for i in range(n)]
-        self._save("form_group_channels__UpdateGroupForm", valid)
-
-    def form_group_channels_addchannel(self) -> None:
-        # Produce 3 channel IDs per entry
-        pool = list(self.gen.generate_int(self.rules['unlimited']['int'], max_len=3))
-        if not pool:
-            self._save("form_group_channels__AddChannelForm", [])
-            return
-        triples = []
-        i = 0
-        while len(triples) < self.gen.data_size:
-            triples.append(pool[i % len(pool): (i % len(pool)) + 3] or pool[:3])
-            i += 3
-        valid = [{"channels": t} for t in triples]
-        self._save("form_group_channels__AddChannelForm", valid)
-
+    # can simply make obj and call this method to get every fixture file
     def generate_all(self) -> None:
-        # Models
-        self.users_user()
-        self.users_partnerprofile()
-        self.parser_telegramchannel()
-        self.parser_channelmoderator()
-        self.parser_channelstats()
-        self.group_channels_group()
-        # Forms
-        self.form_users_userlogin()
-        self.form_users_userreg()
-        self.form_users_userupdate()
-        self.form_users_avatarchange()
-        self.form_users_restore_password_request()
-        self.form_users_restore_password()
-        self.form_parser_channelparse()
-        self.form_group_channels_creategroup()
-        self.form_group_channels_updategroup()
-        self.form_group_channels_addchannel()
+        '''
+        for now only includes forms and models that not require database relations.
+        '''
+        self.model_users_user()
+        self.model_parser_telegram_channel()
 
+        self.form_user_login()
+        self.form_user_reg()
+        self.form_user_update()
+        self.form_user_avatar_change()
+        self.form_restore_password_request()
+        self.form_restore_password()
 
-if __name__ == "__main__":
-    ModelAndFormFixtureGenerator(NUM_OF_FIXTURES).generate_all()
+        self.form_group_create()
+        self.form_group_update()
+
+        self.form_parser_channel_parse()

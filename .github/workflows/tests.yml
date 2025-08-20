@@ -1,0 +1,80 @@
+name: Python CI
+
+on:
+    push:
+        branches:
+            - main
+
+jobs:
+    build:
+        runs-on: ubuntu-latest
+        defaults:
+          run:
+            working-directory: .
+        steps:
+        - name: Checkout repository
+          uses: actions/checkout@v4
+
+        - name: Set up Python
+          uses: actions/setup-python@v4
+          with:
+            python-version: '3.11'
+
+        - name: Install uv
+          run: |
+            curl -LsSf https://astral.sh/uv/install.sh | sh
+
+        - name: Cache uv dependencies
+          uses: actions/cache@v3
+          with:
+            path: ~/.cache/pypoetry
+            key: ${{ runner.os }}-poetry-${{ hashFiles('**/poetry.lock') }}
+            restore-keys: |
+              ${{ runner.os }}-poetry-
+
+        - name: Install dependencies
+          run: uv pip install --system .
+
+        - name: Run tests
+          env:
+            DATABASE_URL: ${{ secrets.DB_URL }}
+            SECRET_KEY: ${{ secrets.SECRET_KEY }}
+          run: |
+            uv run pip install pytest-cov
+            uv run pytest --cov=task_manager --cov-report=xml
+
+        - name: Upload coverage to CodeClimate 
+          env:
+            CC_TEST_REPORTER_ID: ${{ secrets.CC_TEST_REPORTER_ID }}
+          run: |
+            curl -L https://codeclimate.com/downloads/test-reporter/test-reporter-latest-linux-amd64 > ./cc-test-reporter
+            echo "8c7899a7c69f0bfa91ffa739984de0efc6f15176db68897a05704078a1581649 ./cc-test-reporter" | sha256sum -c -
+            chmod +x ./cc-test-reporter
+            ./cc-test-reporter before-build
+            ./cc-test-reporter format-coverage -t coverage.py -o coverage/codeclimate.json
+            ./cc-test-reporter upload-coverage
+
+        - name: Run linter
+          run: |
+            make l
+
+        - name: Upload debug.log
+          uses: actions/upload-artifact@v4
+          with:
+            name: debug-log
+            path: task_manager/debug.log
+            retention-days: 1
+
+        - name: CodeClimate maintainability check
+          env:
+            CC_TEST_REPORTER_ID: ${{ secrets.CC_TEST_REPORTER_ID }}
+          run: |
+            ./cc-test-reporter after-build --exit-code $?
+
+        - name: Download debug-log artifact
+          uses: actions/download-artifact@v4
+          with:
+            name: debug-log
+
+        - name: Show logs
+          run: cat task_manager/debug.log
