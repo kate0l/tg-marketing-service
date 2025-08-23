@@ -1,4 +1,4 @@
-# PriceAggregator 1.0
+# Telegram Marketin Service
 
 ## Описание
 
