@@ -19,10 +19,13 @@ Location note:
 
 import os
 import asyncio
+import logging
 from dotenv import load_dotenv, find_dotenv, set_key
-from django.core.management.base import BaseCommand
+from django.core.management.base import BaseCommand, CommandError
 from telethon import TelegramClient
 from telethon.sessions import StringSession
+
+logger = logging.getLogger(__name__)
 
 class Command(BaseCommand):
     '''Command for generating a Telethon session string.
@@ -39,7 +42,7 @@ class Command(BaseCommand):
     def __init__(self):
         self.session_string = None
 
-    def handle(self, session_name: str='session'):
+    def handle(self, session_name: str='session') -> None:
         '''Entry point for the management command (all need handle method)
 
         Loads environment variables and prepares credentials used by
@@ -64,7 +67,7 @@ class Command(BaseCommand):
 
         # Why async:
         # Telethon client.start is awaitable operation.
-    async def get_session_string(self):
+    async def get_session_string(self) -> None:
         '''Authenticate with Telegram and get the StringSession.
 
         Starts a Telethon client session and saves its serialized
@@ -88,6 +91,21 @@ class Command(BaseCommand):
         await client.disconnect()
 
     # After obtaining the Telegram session string, it is set to .env
-    def set_session_string(self):
-        dotenv_path = find_dotenv(raise_error_if_not_found=True, usecwd=True)
-        set_key(dotenv_path, 'TELEGRAM_SESSION_STRING', self.session_string)
+    def set_session_string(self) -> None:
+        '''Load the Telegram StringSession into the .env file.
+
+        Locates the nearest .env using python-dotenv (searching from the
+        current working directory) and writes/updates the
+        TELEGRAM_SESSION_STRING key with the value previously produced by
+        get_session_string().
+        '''
+        try:
+            dotenv_path = find_dotenv(raise_error_if_not_found=True, usecwd=True)
+            set_key(dotenv_path, 'TELEGRAM_SESSION_STRING', self.session_string)
+            logger.info("Saved TELEGRAM_SESSION_STRING to %s", dotenv_path)
+        except PermissionError as e:
+            logger.exception("Permission denied writing TELEGRAM_SESSION_STRING to .env")
+            raise CommandError("Permission denied writing to .env") from e
+        except OSError as e:
+            logger.exception("OS error while writing TELEGRAM_SESSION_STRING to .env")
+            raise CommandError(f"OS error while writing .env: {e}") from e
