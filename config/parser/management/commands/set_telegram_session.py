@@ -62,7 +62,7 @@ class Command(BaseCommand):
         self.api_id = os.getenv('TELEGRAM_API_ID')
         self.api_hash = os.getenv('TELEGRAM_API_HASH')
         self.phone = os.getenv('PHONE')
-        self.get_session_string()
+        asyncio.run(self.get_session_string())
         self.set_session_string()
 
         # Why async:
