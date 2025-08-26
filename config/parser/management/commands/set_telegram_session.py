@@ -40,9 +40,10 @@ class Command(BaseCommand):
         TELEGRAM_SESSION_STRING in .env'
 
     def __init__(self):
-        self.session_string = None
+        super.__init__()  # init BaseCommand init commands
+        self.session_string = None  # then do our stuff
 
-    def handle(self, session_name: str='session') -> None:
+    def handle(self, session_name: str='session', *args, **kwargs) -> None:
         '''Entry point for the management command (all need handle method)
 
         Loads environment variables and prepares credentials used by
@@ -58,15 +59,17 @@ class Command(BaseCommand):
         '''
         load_dotenv()
 
+        # all these are str
         self.session_name = os.getenv('TELEGRAM_SESSIONS_ENV') or session_name
-        self.api_id = os.getenv('TELEGRAM_API_ID')
+        # api_id should be passed to Telegram as int
+        self.api_id = int(os.getenv('TELEGRAM_API_ID'))
         self.api_hash = os.getenv('TELEGRAM_API_HASH')
         self.phone = os.getenv('PHONE')
+        # need to run in an event loop, to make it run coroutine
         asyncio.run(self.get_session_string())
         self.set_session_string()
 
-        # Why async:
-        # Telethon client.start is awaitable operation.
+        # Why async: Telethon client.start is awaitable operation.
     async def get_session_string(self) -> None:
         '''Authenticate with Telegram and get the StringSession.
 
@@ -85,10 +88,10 @@ class Command(BaseCommand):
             Defined inside `handle` to keep scope-local helpers private
             to the command run.
         '''
-        client = TelegramClient(self.session_name, self.api_id, self.api_hash)
-        await client.start(phone=self.phone)
-        self.session_string = StringSession.save(client.session)
-        await client.disconnect()
+        # c.disconnect is handled via with
+        async with TelegramClient(self.session_name, self.api_id, self.api_hash) as c:
+            await c.start(phone=self.phone)
+            self.session_string = StringSession.save(c.session)
 
     # After obtaining the Telegram session string, it is set to .env
     def set_session_string(self) -> None:
@@ -101,8 +104,18 @@ class Command(BaseCommand):
         '''
         try:
             dotenv_path = find_dotenv(raise_error_if_not_found=True, usecwd=True)
+        except PermissionError as e:
+            logger.exception("Permission denied writing TELEGRAM_SESSION_STRING to .env")
+            raise CommandError("Permission denied writing to .env") from e
+        except OSError as e:
+            logger.exception("OS error while writing TELEGRAM_SESSION_STRING to .env")
+            raise CommandError(f"OS error while writing .env: {e}") from e
+        try:
             set_key(dotenv_path, 'TELEGRAM_SESSION_STRING', self.session_string)
             logger.info("Saved TELEGRAM_SESSION_STRING to %s", dotenv_path)
+        except TypeError as e:
+            logger.exception("Wrong type of TELEGRAM_SESSION_STRING to .env")
+            raise TypeError("Wrong type of TELEGRAM_SESSION_STRING to .env: {e}")
         except PermissionError as e:
             logger.exception("Permission denied writing TELEGRAM_SESSION_STRING to .env")
             raise CommandError("Permission denied writing to .env") from e
