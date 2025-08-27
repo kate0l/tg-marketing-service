@@ -31,11 +31,11 @@ class Command(BaseCommand):
     '''Command for generating a Telethon session string.
 
     Attributes:
-        sessions_string: Placeholder for the generated serialized
+        session_string (str) : Placeholder for the generated serialized
             Telethon StringSession.
     '''
 
-    # What appears under: python3 manage.py help set_telegram_session
+    # What appears for python3 manage.py help set_telegram_session
     help = 'This command is run to set \
         TELEGRAM_SESSION_STRING in .env'
 
@@ -43,7 +43,7 @@ class Command(BaseCommand):
         super.__init__()  # init BaseCommand init commands
         self.session_string = None  # then do our stuff
 
-    def handle(self, session_name: str='session', *args, **kwargs) -> None:
+    def handle(self, session_name_value: str='session', session_name: str='TELEGRAM_SESSION_ENV', api_id: str='TELEGRAM_API_ID', api_hash: str='TELEGRAM_API_HASH', phone: str='PHONE', *args, **kwargs) -> None:
         '''Entry point for the management command (all need handle method)
 
         Loads environment variables and prepares credentials used by
@@ -53,21 +53,22 @@ class Command(BaseCommand):
             session_name (str): Optional session name passed to the command.
                 it should be loaded from .env TELEGRAM_SESSION_NAME.
                 Defaults to 'session'.
+            *args, **kwargs: Optional args, kept for compatibility.
 
         Side Effects:
             Reads variables from a .env file via python-dotenv.
         '''
         load_dotenv()
 
-        # all these are str
-        self.session_name = os.getenv('TELEGRAM_SESSIONS_ENV') or session_name
+        # all .env values are str
+        self.session_name = os.getenv(session_name) or session_name_value
         # api_id should be passed to Telegram as int
-        self.api_id = int(os.getenv('TELEGRAM_API_ID'))
-        self.api_hash = os.getenv('TELEGRAM_API_HASH')
-        self.phone = os.getenv('PHONE')
+        self.api_id = int(os.getenv(api_id))
+        self.api_hash = os.getenv(api_hash)
+        self.phone = os.getenv(phone)
         # need to run in an event loop, to make it run coroutine
         asyncio.run(self.get_session_string())
-        self.set_session_string()
+        self._set_session_string()
 
         # Why async: Telethon client.start is awaitable operation.
     async def get_session_string(self) -> None:
@@ -83,18 +84,13 @@ class Command(BaseCommand):
             telethon.errors.rpcerrorlist.PhoneCodeInvalidError: If the
                 login code is invalid.
             RuntimeError: If the client fails to start.
-
-        Notes:
-            Defined inside `handle` to keep scope-local helpers private
-            to the command run.
         '''
         # c.disconnect is handled via with
         async with TelegramClient(self.session_name, self.api_id, self.api_hash) as c:
             await c.start(phone=self.phone)
             self.session_string = StringSession.save(c.session)
 
-    # After obtaining the Telegram session string, it is set to .env
-    def set_session_string(self) -> None:
+    def _set_session_string(self) -> None:
         '''Load the Telegram StringSession into the .env file.
 
         Locates the nearest .env using python-dotenv (searching from the
