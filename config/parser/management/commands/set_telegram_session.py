@@ -40,7 +40,7 @@ class Command(BaseCommand):
         TELEGRAM_SESSION_STRING in .env'
 
     def __init__(self):
-        super.__init__()  # init BaseCommand init commands
+        super().__init__()  # init BaseCommand init commands
         self.session_string = None  # then do our stuff
 
     def handle(self, session_name_value: str='session', session_name: str='TELEGRAM_SESSION_ENV', api_id: str='TELEGRAM_API_ID', api_hash: str='TELEGRAM_API_HASH', phone: str='PHONE', *args, **kwargs) -> None:
@@ -111,7 +111,7 @@ class Command(BaseCommand):
             logger.info("Saved TELEGRAM_SESSION_STRING to %s", dotenv_path)
         except TypeError as e:
             logger.exception("Wrong type of TELEGRAM_SESSION_STRING to .env")
-            raise TypeError("Wrong type of TELEGRAM_SESSION_STRING to .env: {e}")
+            raise CommandError(f"Wrong type of TELEGRAM_SESSION_STRING to .env: {e}")
         except PermissionError as e:
             logger.exception("Permission denied writing TELEGRAM_SESSION_STRING to .env")
             raise CommandError("Permission denied writing to .env") from e
