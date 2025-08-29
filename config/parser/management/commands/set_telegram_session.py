@@ -44,7 +44,17 @@ class Command(BaseCommand):
         super().__init__()  # init BaseCommand init commands
         self.session_string = None  # then do our stuff
 
-    def handle(self, session_name_value: str='session', session_name: str='TELEGRAM_SESSION_ENV', session_string: str='TELEGRAM_SESSION_STRING', api_id: str='TELEGRAM_API_ID', api_hash: str='TELEGRAM_API_HASH', phone: str='PHONE', *args, **kwargs) -> None:
+    def handle(
+            self,
+            session_name_value: str='session',
+            session_name: str='TELEGRAM_SESSION_ENV',
+            session_string: str='TELEGRAM_SESSION_STRING',
+            api_id: str='TELEGRAM_API_ID',
+            api_hash: str='TELEGRAM_API_HASH',
+            phone: str='PHONE', 
+            *args,
+            **kwargs
+        ) -> None:
         '''Entry point for the management command (all need handle method)
 
         Loads environment variables and prepares credentials used by
@@ -61,7 +71,8 @@ class Command(BaseCommand):
         '''
         load_dotenv()
         # if there is already session string, then skip
-        if session_string or os.getenv(session_string):
+        if os.getenv(session_string):
+            print('Bruh')
             return None
         # all .env values are str
         self.session_name = os.getenv(session_name) or session_name_value
