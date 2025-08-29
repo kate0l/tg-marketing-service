@@ -46,4 +46,4 @@ SPA веб-приложение. Единый портал для сравнен
 4. Заполните поля "App configuration". Если поля уже заполнены, не меняйте их.
 5. Сохраните настройки
 6. В `.env` присвойте переменной "TELEGRAM_API_ID" значение "App api_id", "TELEGRAM_API_HASH" значение "App api_hash"
-7. 
+7. Запустите команду `set_telegram_session`: `uv run python manage.py set_telegram_session`
