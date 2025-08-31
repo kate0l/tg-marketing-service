@@ -130,37 +130,45 @@ class Command(BaseCommand):
         # return super().add_arguments(parser)
 
         # **options instead of **kwargs because of legacy
-        def handle(self, *args, **options) -> None:
-            """Entrypoint: resolve input, authenticate in Telegram, save it
+    def handle(self, *args, **options) -> None:
+        """Entrypoint: resolve input, authenticate in Telegram, save it
 
-            Structure:
-            - Resolve .env path
-            - If --string-session is provided, set it in TELEGRAM_STRING_SESSION
-            - If --string-session is not provided, generate it on provided and
-            existing in .env data (provided is prioritised)
-            - If type of provided data already exists in .env,
-            then ask for overwrite permission (default is yes)
-            - Run Telethon authentication in cli and generate StringSession
-            - Set StringSession in .env
+        Structure:
+        - Resolve .env path
+        - If --string-session is provided, set it in TELEGRAM_STRING_SESSION
+        - If --string-session is not provided, generate it on provided and
+        existing in .env data (provided is prioritised)
+        - If type of provided data already exists in .env,
+        then ask for overwrite permission (default is yes)
+        - Run Telethon authentication in cli and generate StringSession
+        - Set StringSession in .env
 
-            Check of arguments:
-            - if argument was provided in command
-            - then validate it
-            -- if validation is passed, set it in .env
-            - else use what is present in .env
+        Check of arguments:
+        - if argument was provided in command
+        - then validate it
+        -- if validation is passed, set it in .env
+        - else use what is present in .env
 
-            Raises:
-                PermissionError: permission denied to .env file error
-                OSError: error while writing to .env
-                CommandError: other errors
-            """
-            # get all key (option) arguments. cool, huh?
-            force, string_session, api_id, api_hash, phone, env_path = \
-                itemgetter('force', 'string_session', 'api_id', \
-                           'api_hash', 'phone', 'env_path')(options)
+        Raises:
+            PermissionError: permission denied to .env file error
+            OSError: error while writing to .env
+            CommandError: other errors
+        """
+        # get all key (option) arguments. cool, huh?
+        force, string_session, api_id, api_hash, phone, env_path = \
+            itemgetter('force', 'string_session', 'api_id', \
+                        'api_hash', 'phone', 'env_path')(options)
+
             
-            if force:
+        if env_path:
+            env_file = Path(ENV_PATH) / '.env'
+            if env_file.is_file():
+                self.env_path = env_path
+        else:
+            try:
+                self.env_path = find_dotenv(raise_error_if_not_found=True, usecws=True)
+            except FileNotFoundError as e:
+                raise CommandError(f'.env was not found: {e}') from e
 
-            if env_path:
-                env_file = Path(ENV_PATH) / '.env'
-                if env_file.is_file():
+
+        if force :
