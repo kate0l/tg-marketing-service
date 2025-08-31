@@ -21,14 +21,16 @@ P.S.:
     This class can be used at any time and does not require starting up anything
 """
 
+from typing import Optional
 from pathlib import Path
 from operator import itemgetter
+from os import getenv
 from dotenv import load_dotenv, find_dotenv, set_key
 from django.core.management.base import BaseCommand, CommandError, CommandParser
 from telethon import TelegramClient
 from telethon.sessions import StringSession
 
-ENV_SESSION_KEY = 'TELEGRAM_SESSION'
+ENV_STRING_SESSION_KEY = 'TELEGRAM_SESSION'
 ENV_API_ID_KEY = 'TELEGRAM_API_ID'
 ENV_API_HASH_KEY = 'TELEGRAM_API_HASH'
 ENV_PHONE_KEY = 'TELEGRAM_PHONE'
@@ -72,13 +74,14 @@ class Command(BaseCommand):
         2. create fields
         """
 
-        super().__init__(*args, **kwargs):
-        self.string_session = None
-        self.api_id = None
-        self.api_hash = None
-        self.phone = None
-        self.env_path = None
-    
+        super().__init__(*args, **kwargs)
+        # I didnt know about this so added it
+        self.string_session: Optional[str] = None
+        self.api_id: Optional[int] = None
+        self.api_hash: Optional[str] = None
+        self.phone: Optional[str] = None
+        self.env_path: Optional[str] = None
+
     # argparse arguments
     def add_arguments(self, parser: CommandParser) -> None:
         """Define CLI options
@@ -130,7 +133,7 @@ class Command(BaseCommand):
         # return super().add_arguments(parser)
 
         # **options instead of **kwargs because of legacy
-    def handle(self, *args, **options) -> None:
+    def handle(self, *args, **options: dict[str, str]) -> None:
         """Entrypoint: resolve input, authenticate in Telegram, save it
 
         Structure:
@@ -170,5 +173,31 @@ class Command(BaseCommand):
             except FileNotFoundError as e:
                 raise CommandError(f'.env was not found: {e}') from e
 
+        load_dotenv(self.env_path)
 
-        if force :
+        if string_session:
+            self.string_session = string_session.replace(' ', '')
+            # if after removing whitespaces no string left:
+            if not self.string_session:
+                raise CommandError('--string-session is empty')
+            # there is --string-session valid value.
+            # need to check if there is need to replace existing .env
+            if force and getenv(ENV_STRING_SESSION_KEY):
+                answer = input(f'{ENV_STRING_SESSION_KEY} is present. Do you want to regenerate it? [y/N]').strip()
+                if answer == 'y':
+                    self.set_session_string(ENV_STRING_SESSION_KEY)
+
+    async def get_session_string(self) -> None:
+        '''Authentucate in TelegramClient and save StringSession in self.string_session
+
+        Raises:
+            OSError: if disconnect error occurs
+            CommandError: other errors
+        '''
+
+    def set_session_string(self, string_session_key: str) -> None:
+        '''Set thee generated StringSession in .env
+
+        Args:
+            string_session_key: 
+        '''

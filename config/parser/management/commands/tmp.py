@@ -146,6 +146,12 @@ class Command(BaseCommand):
                 raise CommandError(f'Could not locate .env file from current directory: {e}') from e
 
         load_dotenv(self.env_path)
+        
+        
+
+        
+        !!!
+
 
         # if --string-session provided, just store it
         if string_session_opt:
