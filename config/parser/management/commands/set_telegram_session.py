@@ -21,6 +21,7 @@ P.S.:
     This class can be used at any time and does not require starting up anything
 """
 
+from pathlib import Path
 from operator import itemgetter
 from dotenv import load_dotenv, find_dotenv, set_key
 from django.core.management.base import BaseCommand, CommandError, CommandParser
@@ -161,4 +162,5 @@ class Command(BaseCommand):
             if force:
 
             if env_path:
-                if no file on the path(env_path)
+                env_file = Path(ENV_PATH) / '.env'
+                if env_file.is_file():
