@@ -231,7 +231,7 @@ class Command(BaseCommand):
                 else:
                     pass
 
-    def replace_env_data(self, att_name: str, env_key: str, value: Any, to_type: Callable, force: bool=False, remove_whitespace: bool=True) -> None:
+    def replace_env_data(self, att_name: str, env_key: str, value: Any, to_type: Callable[[Any], Any] = str, force: bool=False, remove_whitespace: bool=True) -> None:
         if isinstance(value, str) and remove_whitespace:
             value = value.replace(' ', '')
         if not value:  # '' makes no sense for TelegramClient settings
