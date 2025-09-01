@@ -234,7 +234,7 @@ class Command(BaseCommand):
     def replace_env_data(self, att_name: str, env_key: str, value: Any, to_type: Callable, force: bool=False, remove_whitespace: bool=True) -> None:
         if isinstance(value, str) and remove_whitespace:
             value = value.replace(' ', '')
-        if not value:  # '' or None make no sense for TelegramClient settings
+        if not value:  # '' makes no sense for TelegramClient settings
             try:  # get value from .env
                 setattr(self, att_name, getenv(env_key))
             except ValueError as e:
@@ -242,11 +242,11 @@ class Command(BaseCommand):
             except TypeError as e:
                 raise CommandError(f'Wrong type ({type(env_key)} of {env_key}: {e}') from e
 
-        try:
-            if to_type:
+        if to_type:
+            try:
                 value = to_type(value) if not isinstance(value, to_type) else value
-        except TypeError as e:
-            raise CommandError(f'Error while converting {value} of {type(value)} type to {to_type}') from e
+            except TypeError as e:
+                raise CommandError(f'Error while converting {value} of {type(value)} type to {to_type}') from e
 
         if getenv(env_key):
             answer = 'y'
