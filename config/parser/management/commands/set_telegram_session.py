@@ -21,7 +21,7 @@ P.S.:
     This class can be used at any time and does not require starting up anything
 """
 
-from typing import Optional
+from typing import Optional, Callable, TypeVar, Any
 from pathlib import Path
 from operator import itemgetter
 from os import getenv
@@ -140,7 +140,7 @@ class Command(BaseCommand):
         - Resolve .env path
         - If --string-session is provided, set it in TELEGRAM_STRING_SESSION
         - If --string-session is not provided, generate it on provided and
-        existing in .env data (provided is prioritised)
+        existing in .env data
         - If type of provided data already exists in .env,
         then ask for overwrite permission (default is yes)
         - Run Telethon authentication in cli and generate StringSession
@@ -175,17 +175,85 @@ class Command(BaseCommand):
 
         load_dotenv(self.env_path)
 
+        # check if provided data present in .env and ask if want to replace data in .env
+        # there are no ' ' spaces in any data, so safely remove it to fix typos
         if string_session:
-            self.string_session = string_session.replace(' ', '')
+            string_session = string_session.replace(' ', '')
             # if after removing whitespaces no string left:
-            if not self.string_session:
-                raise CommandError('--string-session is empty')
-            # there is --string-session valid value.
+            if not string_session:
+                raise CommandError('provided --string-session is empty')
             # need to check if there is need to replace existing .env
-            if force and getenv(ENV_STRING_SESSION_KEY):
-                answer = input(f'{ENV_STRING_SESSION_KEY} is present. Do you want to regenerate it? [y/N]').strip()
+            if getenv(ENV_STRING_SESSION_KEY):
+                answer = 'y'
+                if not force:
+                    answer = input(f'{ENV_STRING_SESSION_KEY} is present. Do you want to replace it? [y/N]').strip()
                 if answer == 'y':
                     self.set_session_string(ENV_STRING_SESSION_KEY)
+                else:  # data is provided, but refused to use it, so it will be generated as usual
+                    pass
+        
+        if api_id:
+            api_id = int(api_id.replace(' ', ''))  # should be int
+            if not api_id:
+                raise CommandError('provided --api-id is empty')
+            if getenv(ENV_API_ID_KEY):  # '' is falsy
+                answer = 'y'
+                if not force:
+                    answer = input(f'{ENV_API_ID_KEY} is present. Do you want to replace it? [y/N]').strip()
+                if answer == 'y':
+                    self.set_session_string(ENV_API_ID_KEY)
+                else:
+                    pass
+
+        if api_hash:
+            api_hash = api_hash.replace(' ', '')
+            if not api_id:
+                raise CommandError('provided --api-id is empty')
+            if getenv(ENV_API_HASH_KEY):  # '' is falsy
+                answer = 'y'
+                if not force:
+                    answer = input(f'{ENV_API_HASH_KEY} is present. Do you want to replace it? [y/N]').strip()
+                if answer == 'y':
+                    self.set_session_string(ENV_API_HASH_KEY)
+                else:
+                    pass
+
+        if phone:
+            phone = phone.replace(' ', '')
+            if not phone:
+                raise CommandError('provided --api-id is empty')
+            if getenv(ENV_PHONE_KEY):  # '' is falsy
+                answer = 'y'
+                if not force:
+                    answer = input(f'{ENV_API_HASH_KEY} is present. Do you want to replace it? [y/N]').strip()
+                if answer == 'y':
+                    self.set_session_string(ENV_API_HASH_KEY)
+                else:
+                    pass
+
+    def replace_env_data(self, env_key: str, value: Any, to_type: Callable, force: bool, remove_whitespace: bool=True) -> None:
+        if value is None:
+            try:
+                return getenv(env_key)
+            except ValueError as e:
+                raise CommandError(f'Wrong {env_key}: {e}') from e
+            except TypeError as e:
+                raise CommandError(f'Wrong type ({type(env_key)} of {env_key}: {e}') from e
+
+        if isinstance(value, str) and remove_whitespace:
+            value = value.replace(' ', '')
+        if to_type:
+            value = to_type(value) if not isinstance(value, to_type) else value
+        if not value:
+            raise CommandError('provided value is empty')
+        if getenv(env_key):
+            answer = 'y'
+            if not force:
+                answer = input(f'{env_key} is present. Do you want to replace it? [{answer}/n]').strip()
+            if answer == 'y':
+                self.set_session_string(env_key)
+            else:
+                pass
 
     async def get_session_string(self) -> None:
         '''Authentucate in TelegramClient and save StringSession in self.string_session
