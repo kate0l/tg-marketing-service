@@ -242,10 +242,9 @@ class Command(BaseCommand):
             except TypeError as e:
                 raise CommandError(f'Wrong type ({type(env_key)} of {env_key}: {e}') from e
 
-        if to_type:
-            try:
-                value = to_type(value) if not isinstance(value, to_type) else value
-            except TypeError as e:
+        try:
+            value = to_type(value) if not isinstance(value, to_type) else value
+        except TypeError as e:
                 raise CommandError(f'Error while converting {value} of {type(value)} type to {to_type}') from e
 
         if getenv(env_key):
