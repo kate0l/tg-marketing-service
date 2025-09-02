@@ -196,7 +196,7 @@ class Command(BaseCommand):
             self.stdout.write('TELEGRAM_SESSION already present. Use --force to regenerate.')
             return
 
-        # Generate a new StringSession (requires api_id, api_hash, phone)
+        # Check if enough to generate StringSession (requires api_id, api_hash, phone)
         missing = [name for name, val in [('api_id', self.api_id), ('api_hash', self.api_hash), ('phone', self.phone)] if not val]
         if missing:
             raise CommandError(f'Missing required data: {", ".join(missing)}')
@@ -205,7 +205,15 @@ class Command(BaseCommand):
         asyncio.run(self.get_string_session())
         self.set_string_session(ENV_STRING_SESSION_KEY)
 
-    def replace_env_data(self, att_name: str, env_key: str, value: Any, to_type: Callable[[Any], Any] = str, force: bool=False, remove_whitespace: bool=True) -> None:
+    def replace_env_data(
+            self,
+            att_name: str,
+            env_key: str,
+            value: Any,
+            to_type: Callable[[Any], Any] = str,
+            force: bool=False,
+            remove_whitespace: bool=True
+        ) -> None:
         # Normalize incoming value (CLI value)
         if isinstance(value, str) and remove_whitespace:
             value = value.replace(' ', '')
