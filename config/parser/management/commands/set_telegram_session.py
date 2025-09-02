@@ -108,7 +108,7 @@ class Command(BaseCommand):
         parser.add_argument(
             '--api-id',
             dest='api_id',
-            type=str,
+            type=int,  # ensure int at parse time
             help=f'Override {ENV_API_ID_KEY}'
         )
         parser.add_argument(
@@ -162,15 +162,18 @@ class Command(BaseCommand):
             itemgetter('force', 'string_session', 'api_id', \
                         'api_hash', 'phone', 'env_path')(options)
 
-            
+        # Fix env path resolution
         if env_path:
-            env_file = Path(ENV_PATH) / '.env'
-            if env_file.is_file():
-                self.env_path = env_path
+            p = Path(env_path)
+            env_file = p if p.suffix == '.env' else (p / '.env')
+            if not env_file.is_file():
+                raise CommandError(f'.env was not found at: {env_file}')
+            self.env_path = str(env_file)
         else:
             try:
-                self.env_path = find_dotenv(raise_error_if_not_found=True, usecws=True)
-            except FileNotFoundError as e:
+                # fix: usecwd (not usecws)
+                self.env_path = find_dotenv(raise_error_if_not_found=True, usecwd=True)
+            except Exception as e:
                 raise CommandError(f'.env was not found: {e}') from e
 
         load_dotenv(self.env_path)
@@ -184,6 +187,7 @@ class Command(BaseCommand):
 
         # If --string-session provided, just save it and exit
         if string_session:
+            self.string_session = string_session  # ensure it is used by set_string_session
             self.set_string_session(ENV_STRING_SESSION_KEY)
             return
 
@@ -203,43 +207,29 @@ class Command(BaseCommand):
 
     def replace_env_data(self, att_name: str, env_key: str, value: Any, to_type: Callable[[Any], Any] = str, force: bool=False, remove_whitespace: bool=True) -> None:
         # Normalize incoming value (CLI value)
-        try:
-            value = value.replace(' ', '') if remove_whitespace else value
-        except TypeError as e:
-            pass  # dont care if value type is not str and raised exception
-        except ValueError as e:
-            raise CommandError(f'{value} value is wrong: {e}') from e
+        if isinstance(value, str) and remove_whitespace:
+            value = value.replace(' ', '')
 
-        # this if statement should have been caught by ValueError above, but need to check later
-        if not value:  # '' makes no sense for TelegramClient settings
-            try:  # get value from .env
+        # If no CLI value, use env and stop
+        if value is None or (isinstance(value, str) and value == ''):
+            setattr(self, att_name, getenv(env_key))
+            return
+
+        # Convert provided value
+        try:
+            converted = value if isinstance(value, to_type) else to_type(value)
+        except Exception as e:
+            raise CommandError(f'Error while converting {value} of {type(value)} to {to_type}: {e}') from e
+
+        # If env already has a value, confirm replacement unless --force
+        if getenv(env_key) and not force:
+            answer = input(f'{env_key} is present. Do you want to replace it? [y/N] ').strip().lower()
+            if answer != 'y':
                 setattr(self, att_name, getenv(env_key))
-            except ValueError as e:
-                raise CommandError(f'Wrong {env_key}: {e}') from e
-            except TypeError as e:
-                raise CommandError(f'Wrong type ({type(env_key)} of {env_key}: {e}') from e
+                return
 
-        try:
-            value = to_type(value) if not isinstance(value, to_type) else value
-        except TypeError as e:
-            raise CommandError(f'Error while converting {value} of {type(value)} type to {to_type}') from e
-
-        if getenv(env_key):
-            answer = 'y'
-            if not force:
-                answer = input(f'{env_key} is present. Do you want to replace it? [{answer}/n]').strip()
-            if answer == 'y':
-                setattr(self, att_name, value)
-            else:
-                try:  # get value from .env
-                    setattr(self, att_name, getenv(env_key))
-                except ValueError as e:
-                    raise CommandError(f'Wrong {env_key}: {e}') from e
-                except TypeError as e:
-                    raise CommandError(f'Wrong type ({type(env_key)} of {env_key}: {e}') from e
-        else:
-            # No env value, use CLI value
-            setattr(self, att_name, value)        
+        # Use provided/converted value
+        setattr(self, att_name, converted)
 
 
     async def get_string_session(self) -> None:
@@ -254,7 +244,7 @@ class Command(BaseCommand):
         except ValueError as e:
             raise CommandError(f'api_id, api_hash and phone are required to generate StringSession: {e}') from e
         try:
-            await client.start(phone=self.phone)
+            await client.start(phone=self.phone, password=getenv(ENV_PASSWORD_KEY))
             self.string_session = client.session.save()
         except Exception as e:
             raise CommandError(f'Failed to generate StringSession: {e}') from e
@@ -270,14 +260,10 @@ class Command(BaseCommand):
         Args:
             string_session_key: 
         '''
-        if not self.env_path:
-            raise CommandError('Path to .env is not set')
-        if not self.string_session:
-            raise CommandError('StringSession is empty')
-
         try:
             set_key(self.env_path, string_session_key, self.string_session)
-            self.stdout.write(self.style.SUCCESS(f'{string_session_key} saved to .env'))
+        except ValueError as e:
+            raise CommandError(f' Not enough data provided for generating StringSession: {e}') from e
         except PermissionError as e:
             raise
         except OSError as e:
