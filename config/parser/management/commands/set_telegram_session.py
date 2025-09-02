@@ -177,61 +177,32 @@ class Command(BaseCommand):
 
         # check if provided data present in .env and ask if want to replace data in .env
         # there are no ' ' spaces in any data, so safely remove it to fix typos
+        self.replace_env_data('string_session', ENV_STRING_SESSION_KEY, string_session, str, force)
+        self.replace_env_data('api_id', ENV_API_ID_KEY, api_id, int, force)
+        self.replace_env_data('api_hash', ENV_API_HASH_KEY, api_hash, str, force)
+        self.replace_env_data('phone', ENV_PHONE_KEY, phone, str, force)
+
+        # If --string-session provided, just save it and exit
         if string_session:
-            string_session = string_session.replace(' ', '')
-            # if after removing whitespaces no string left:
-            if not string_session:
-                raise CommandError('provided --string-session is empty')
-            # need to check if there is need to replace existing .env
-            if getenv(ENV_STRING_SESSION_KEY):
-                answer = 'y'
-                if not force:
-                    answer = input(f'{ENV_STRING_SESSION_KEY} is present. Do you want to replace it? [y/N]').strip()
-                if answer == 'y':
-                    self.set_session_string(ENV_STRING_SESSION_KEY)
-                else:  # data is provided, but refused to use it, so it will be generated as usual
-                    pass
-        
-        if api_id:
-            api_id = int(api_id.replace(' ', ''))  # should be int
-            if not api_id:
-                raise CommandError('provided --api-id is empty')
-            if getenv(ENV_API_ID_KEY):  # '' is falsy
-                answer = 'y'
-                if not force:
-                    answer = input(f'{ENV_API_ID_KEY} is present. Do you want to replace it? [y/N]').strip()
-                if answer == 'y':
-                    self.set_session_string(ENV_API_ID_KEY)
-                else:
-                    pass
+            self.set_string_session(ENV_STRING_SESSION_KEY)
+            return
 
-        if api_hash:
-            api_hash = api_hash.replace(' ', '')
-            if not api_id:
-                raise CommandError('provided --api-id is empty')
-            if getenv(ENV_API_HASH_KEY):  # '' is falsy
-                answer = 'y'
-                if not force:
-                    answer = input(f'{ENV_API_HASH_KEY} is present. Do you want to replace it? [y/N]').strip()
-                if answer == 'y':
-                    self.set_session_string(ENV_API_HASH_KEY)
-                else:
-                    pass
+        # If session already exists and no --force, do nothing
+        if getenv(ENV_STRING_SESSION_KEY) and not force:
+            self.stdout.write('TELEGRAM_SESSION already present. Use --force to regenerate.')
+            return
 
-        if phone:
-            phone = phone.replace(' ', '')
-            if not phone:
-                raise CommandError('provided --api-id is empty')
-            if getenv(ENV_PHONE_KEY):  # '' is falsy
-                answer = 'y'
-                if not force:
-                    answer = input(f'{ENV_API_HASH_KEY} is present. Do you want to replace it? [y/N]').strip()
-                if answer == 'y':
-                    self.set_session_string(ENV_API_HASH_KEY)
-                else:
-                    pass
+        # Generate a new StringSession (requires api_id, api_hash, phone)
+        missing = [name for name, val in [('api_id', self.api_id), ('api_hash', self.api_hash), ('phone', self.phone)] if not val]
+        if missing:
+            raise CommandError(f'Missing required data: {", ".join(missing)}')
+
+        import asyncio
+        asyncio.run(self.get_string_session())
+        self.set_string_session(ENV_STRING_SESSION_KEY)
 
     def replace_env_data(self, att_name: str, env_key: str, value: Any, to_type: Callable[[Any], Any] = str, force: bool=False, remove_whitespace: bool=True) -> None:
+        # Normalize incoming value (CLI value)
         try:
             value = value.replace(' ', '') if remove_whitespace else value
         except TypeError as e:
@@ -266,20 +237,48 @@ class Command(BaseCommand):
                     raise CommandError(f'Wrong {env_key}: {e}') from e
                 except TypeError as e:
                     raise CommandError(f'Wrong type ({type(env_key)} of {env_key}: {e}') from e
-        
+        else:
+            # No env value, use CLI value
+            setattr(self, att_name, value)        
 
 
-    async def get_session_string(self) -> None:
+    async def get_string_session(self) -> None:
         '''Authentucate in TelegramClient and save StringSession in self.string_session
 
         Raises:
             OSError: if disconnect error occurs
             CommandError: other errors
         '''
+        try:
+            client = TelegramClient(StringSession(), self.api_id, self.api_hash)
+        except ValueError as e:
+            raise CommandError(f'api_id, api_hash and phone are required to generate StringSession: {e}') from e
+        try:
+            await client.start(phone=self.phone)
+            self.string_session = client.session.save()
+        except Exception as e:
+            raise CommandError(f'Failed to generate StringSession: {e}') from e
+        finally:
+            try:
+                await client.disconnect()
+            except Exception as e:
+                raise OSError(f'Error while disconnecting TelegramClient: {e}') from e
 
-    def set_session_string(self, string_session_key: str) -> None:
+    def set_string_session(self, string_session_key: str) -> None:
         '''Set thee generated StringSession in .env
 
         Args:
             string_session_key: 
         '''
+        if not self.env_path:
+            raise CommandError('Path to .env is not set')
+        if not self.string_session:
+            raise CommandError('StringSession is empty')
+
+        try:
+            set_key(self.env_path, string_session_key, self.string_session)
+            self.stdout.write(self.style.SUCCESS(f'{string_session_key} saved to .env'))
+        except PermissionError as e:
+            raise
+        except OSError as e:
+            raise
