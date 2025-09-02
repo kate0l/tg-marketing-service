@@ -47,3 +47,58 @@ SPA веб-приложение. Единый портал для сравнен
 5. Сохраните настройки
 6. В `.env` присвойте переменной "TELEGRAM_API_ID" значение "App api_id", "TELEGRAM_API_HASH" значение "App api_hash"
 7. Запустите команду `set_telegram_session`: `uv run python manage.py set_telegram_session`
+
+### Backend (локальный запуск через Make)
+
+1. Примените миграции базы данных:
+   ```sh
+   make migrate
+   ```
+
+2. Соберите статические файлы (для локального запуска можно пропустить, для prod — требуется):
+   ```sh
+   make collectstatic
+   ```
+
+3. Запустите dev-сервер Django:
+   ```sh
+   make dev
+   ```
+   По умолчанию сервер доступен на http://127.0.0.1:8000. Порт задаётся переменной PORT в [`Makefile`](Makefile).
+
+4. (Опционально) Запустите prod-сервер на Gunicorn:
+   ```sh
+   make prod-run
+   ```
+   Можно указать порт: `make prod-run PORT=8080`. См. настройки в [`config/settings.py`](config/settings.py).
+
+### Фоновые задачи (Redis + Celery)
+
+1. Запустите Redis (в отдельном терминале):
+   ```sh
+   make redis
+   ```
+
+2. Запустите Celery worker (в отдельном терминале):
+   ```sh
+   make celery
+   ```
+
+3. Запустите планировщик задач Celery Beat (в отдельном терминале):
+   ```sh
+   make celery-beat
+   ```
+   Плановые задачи настраиваются в [`config/settings.py`](config/settings.py) (CELERY_BEAT_SCHEDULE).
+
+4. (Опционально) Откройте мониторинг задач (Flower):
+   ```sh
+   make flower
+   ```
+
+### Утилиты
+
+1. Сгенерируйте/обновите Telegram session через management-команду:
+   ```sh
+   make s
+   ```
+   Команда:
