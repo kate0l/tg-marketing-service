@@ -232,8 +232,14 @@ class Command(BaseCommand):
                     pass
 
     def replace_env_data(self, att_name: str, env_key: str, value: Any, to_type: Callable[[Any], Any] = str, force: bool=False, remove_whitespace: bool=True) -> None:
-        if isinstance(value, str) and remove_whitespace:
-            value = value.replace(' ', '')
+        try:
+            value = value.replace(' ', '') if remove_whitespace else value
+        except TypeError as e:
+            pass  # dont care if value type is not str and raised exception
+        except ValueError as e:
+            raise CommandError(f'{value} value is wrong: {e}') from e
+
+        # this if statement should have been caught by ValueError above, but need to check later
         if not value:  # '' makes no sense for TelegramClient settings
             try:  # get value from .env
                 setattr(self, att_name, getenv(env_key))
@@ -245,16 +251,23 @@ class Command(BaseCommand):
         try:
             value = to_type(value) if not isinstance(value, to_type) else value
         except TypeError as e:
-                raise CommandError(f'Error while converting {value} of {type(value)} type to {to_type}') from e
+            raise CommandError(f'Error while converting {value} of {type(value)} type to {to_type}') from e
 
         if getenv(env_key):
             answer = 'y'
             if not force:
                 answer = input(f'{env_key} is present. Do you want to replace it? [{answer}/n]').strip()
             if answer == 'y':
-                self.set_session_string(env_key)
+                setattr(self, att_name, value)
             else:
-                pass
+                try:  # get value from .env
+                    setattr(self, att_name, getenv(env_key))
+                except ValueError as e:
+                    raise CommandError(f'Wrong {env_key}: {e}') from e
+                except TypeError as e:
+                    raise CommandError(f'Wrong type ({type(env_key)} of {env_key}: {e}') from e
+        
+
 
     async def get_session_string(self) -> None:
         '''Authentucate in TelegramClient and save StringSession in self.string_session
