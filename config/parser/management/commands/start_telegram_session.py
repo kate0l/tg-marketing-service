@@ -198,23 +198,19 @@ class Command(BaseCommand):
         if string_session:
             self.ensure_required(['api_id', 'api_hash'])
             self.set_string_session(ENV_STRING_SESSION_KEY)
-            # self.stdout.write('StringSession provided. Starting Telegram client.')
             asyncio.run(self.start_telegram_session())
             return
 
         # If session exists in env and not forcing regeneration, start with it
         if self.string_session and not force:
             self.ensure_required(['api_id', 'api_hash'])
-            # self.stdout.write('TELEGRAM_SESSION found in .env. Starting Telegram client.')
             asyncio.run(self.start_telegram_session())
             return
 
         # No StringSession present and is --force if happen here, so get StringSession and start TelegramClient
         self.ensure_required(['api_id', 'api_hash', 'phone'])
-        # self.stdout.write('Building TelegramClient.')
         asyncio.run(self.get_string_session())
         self.set_string_session(ENV_STRING_SESSION_KEY)
-        # self.stdout.write('TelegramClient is ready. Starting Telegram client.')
         asyncio.run(self.start_telegram_session())
 
     def replace_env_data(
