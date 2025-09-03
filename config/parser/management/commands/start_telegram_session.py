@@ -194,24 +194,27 @@ class Command(BaseCommand):
         self.replace_env_data('password', ENV_PASSWORD_KEY, password, str, force)
         self.replace_env_data('phone', ENV_PHONE_KEY, phone, str, force)
 
-        # If user provided a new string session via CLI, persist and start
+        # If user provided a new StringSession via CLI, use it and start TelegramClient
         if string_session:
             self.ensure_required(['api_id', 'api_hash'])
             self.set_string_session(ENV_STRING_SESSION_KEY)
+            self.stdout.write('StringSession provided. Starting Telegram client.')
             asyncio.run(self.start_telegram_session())
             return
 
         # If session exists in env and not forcing regeneration, start with it
         if self.string_session and not force:
             self.ensure_required(['api_id', 'api_hash'])
-            self.stdout.write('TELEGRAM_SESSION found. Starting Telegram client...')
+            self.stdout.write('TELEGRAM_SESSION found in .env. Starting Telegram client.')
             asyncio.run(self.start_telegram_session())
             return
 
-        # Generate a new session (no StringSession present and is --force
+        # No StringSession present and is --force if happen here, so get StringSession and start TelegramClient
         self.ensure_required(['api_id', 'api_hash', 'phone'])
+        self.stdout.write('Building TelegramClient.')
         asyncio.run(self.get_string_session())
         self.set_string_session(ENV_STRING_SESSION_KEY)
+        self.stdout.write('TelegramClient is ready.Starting Telegram client.')
         asyncio.run(self.start_telegram_session())
 
     def replace_env_data(
@@ -230,22 +233,22 @@ class Command(BaseCommand):
         # If no CLI value, use env and stop
         if value is None or (isinstance(value, str) and value == ''):
             setattr(self, att_name, getenv(env_key))
-            return
+            return None
 
         # Convert provided value
         try:
             converted = value if isinstance(value, to_type) else to_type(value)
-        except Exception as e:
+        except (ValueError, TypeError) as e:
             raise CommandError(f'Error while converting {value} of {type(value)} to {to_type}: {e}') from e
 
-        # If env already has a value, confirm replacement unless --force
+        # If env already has value, ask if replace (unless --force)
         if getenv(env_key) and not force:
             answer = input(f'{env_key} is present. Do you want to replace it? [y/N] ').strip().lower()
             if answer != 'y':
                 setattr(self, att_name, getenv(env_key))
-                return
+                return None
 
-        # Set provided data
+        # --force is if here, so set provided data
         setattr(self, att_name, converted)
 
     def ensure_required(self, required: list[str]) -> None:
@@ -261,6 +264,7 @@ class Command(BaseCommand):
             OSError: if disconnect error occurs
             CommandError: other errors
         """
+        # Build TelegramClient
         try:
             client = TelegramClient(StringSession(), self.api_id, self.api_hash)
         except ValueError as e:
@@ -270,6 +274,8 @@ class Command(BaseCommand):
             await client.start(phone=self.phone, password=self.password)
         except Exception as e:
             raise CommandError(f'Failed to generate StringSession: {e}') from e
+
+        # save StringSession
         try:
             self.string_session = client.session.save()
         except Exception as e:
@@ -289,6 +295,7 @@ class Command(BaseCommand):
         Raises:
             
         """
+        # Sei StringSession
         try:
             set_key(self.env_path, string_session_key, self.string_session)
         except ValueError as e:
@@ -300,11 +307,8 @@ class Command(BaseCommand):
 
     async def start_telegram_session(self) -> None:
         """Start TelegramClient session using resolved StringSession and API creds."""
-        # Use already-resolved values
-        session = self.string_session
-        api_id = self.api_id
-        api_hash = self.api_hash
-        client = TelegramClient(StringSession(session), api_id, api_hash)
+        # Use resolved values
+        client = TelegramClient(StringSession(self.string_session), self.api_id, self.api_hash)
         try:
             await client.connect()
             if not await client.is_user_authorized():
@@ -329,5 +333,8 @@ class Command(BaseCommand):
             self.stdout.write(f'Telegram session is active. Logged in as: {getattr(user_, "username", None) or user_.id}')
         except Exception as e:
             raise CommandError(f'This is bad: {e}') from e
-        finally:
+
+        try:
             await client.disconnect()
+        except OSError as e:
+            raise CommandError(f'Error while disconnecting from Telegram client: {e}') from e

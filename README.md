@@ -45,7 +45,7 @@ SPA веб-приложение. Единый портал для анализа
 2.5. В `.env` присвойте переменной "TELEGRAM_API_ID" значение "App api_id", "TELEGRAM_API_HASH" значение "App api_hash"
 2.6. Запустите команду `set_telegram_session`: `uv run python manage.py set_telegram_session`
 
-### Backend (локальный запуск через Make)
+### Бэкенд (запуск через Make)
 
 1. Примените миграции базы данных:
    ```sh
@@ -94,8 +94,7 @@ SPA веб-приложение. Единый портал для анализа
 
 ### Утилиты
 
-1. Сгенерируйте/обновите Telegram session через management-команду (запускает uv run python manage.py set_telegram_session):
+1. Сгенерируйте/обновите Telegram сессию через management команду (запускает uv run python manage.py set_telegram_session):
    ```sh
    make s
    ```
-   Команда:
