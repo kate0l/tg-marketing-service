@@ -31,11 +31,11 @@ from django.core.management.base import BaseCommand, CommandError, CommandParser
 from telethon import TelegramClient
 from telethon.sessions import StringSession
 
-ENV_STRING_SESSION_KEY = 'TELEGRAM_SESSION'
+ENV_STRING_SESSION_KEY = 'TELEGRAM_SESSION_STRING'
 ENV_API_ID_KEY = 'TELEGRAM_API_ID'
 ENV_API_HASH_KEY = 'TELEGRAM_API_HASH'
-ENV_PHONE_KEY = 'PHONE'
 ENV_PASSWORD_KEY = 'TELEGRAM_PASSWORD'
+ENV_PHONE_KEY = 'PHONE'
 ENV_PATH = '/'
 
 
@@ -119,6 +119,12 @@ class Command(BaseCommand):
             help=f'Override {ENV_API_HASH_KEY}'
         )
         parser.add_argument(
+            '--password',
+            dest='password',
+            type=str,
+            help=f'Override {ENV_PASSWORD_KEY}'
+        )
+        parser.add_argument(
             '--phone',
             dest='phone',
             type=str,
@@ -159,9 +165,9 @@ class Command(BaseCommand):
             CommandError: other errors
         """
         # get all key (option) arguments. cool, huh?
-        force, string_session, api_id, api_hash, phone, env_path = \
+        force, string_session, api_id, api_hash, password, phone, env_path = \
             itemgetter('force', 'string_session', 'api_id', \
-                        'api_hash', 'phone', 'env_path')(options)
+                        'api_hash', 'password', 'phone', 'env_path')(options)
 
         # Fix env path resolution
         if env_path:
@@ -195,6 +201,7 @@ class Command(BaseCommand):
         self.replace_env_data('string_session', ENV_STRING_SESSION_KEY, string_session, str, force)
         self.replace_env_data('api_id', ENV_API_ID_KEY, api_id, int, force)
         self.replace_env_data('api_hash', ENV_API_HASH_KEY, api_hash, str, force)
+        self.replace_env_data('password', ENV_PASSWORD_KEY, password, str, force)
         self.replace_env_data('phone', ENV_PHONE_KEY, phone, str, force)
 
         # Check if enough to generate StringSession (requires api_id, api_hash, phone)
@@ -252,10 +259,14 @@ class Command(BaseCommand):
         except ValueError as e:
             raise CommandError(f'api_id, api_hash and phone are required to generate StringSession: {e}') from e
         try:
-            await client.start(phone=self.phone, password=getenv(ENV_PASSWORD_KEY))
-            self.string_session = client.session.save()
+            # Use the resolved password (CLI or .env), not getenv('PASSWORD')
+            await client.start(phone=self.phone, password=self.password)
         except Exception as e:
             raise CommandError(f'Failed to generate StringSession: {e}') from e
+        try:
+            self.string_session = client.session.save()
+        except Exception as e:
+            raise CommandError(f'Failed to save StringSession: {e}') from e
         finally:
             try:
                 await client.disconnect()
@@ -263,7 +274,7 @@ class Command(BaseCommand):
                 raise OSError(f'Error while disconnecting TelegramClient: {e}') from e
 
     def set_string_session(self, string_session_key: str) -> None:
-        '''Set thee generated StringSession in .env
+        '''Set the generated StringSession in .env
 
         Args:
             string_session_key: 
@@ -276,3 +287,7 @@ class Command(BaseCommand):
             raise
         except OSError as e:
             raise
+
+    def start_telegram_session(self) -> None:
+        """Start TelegramClient session"""
+        ...
