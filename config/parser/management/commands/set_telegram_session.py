@@ -21,7 +21,7 @@ P.S.:
     This class can be used at any time and does not require starting up anything
 """
 
-import aysncio
+import asyncio
 from typing import Optional, Callable, TypeVar, Any
 from pathlib import Path
 from operator import itemgetter
@@ -34,7 +34,7 @@ from telethon.sessions import StringSession
 ENV_STRING_SESSION_KEY = 'TELEGRAM_SESSION'
 ENV_API_ID_KEY = 'TELEGRAM_API_ID'
 ENV_API_HASH_KEY = 'TELEGRAM_API_HASH'
-ENV_PHONE_KEY = 'TELEGRAM_PHONE'
+ENV_PHONE_KEY = 'PHONE'
 ENV_PASSWORD_KEY = 'TELEGRAM_PASSWORD'
 ENV_PATH = '/'
 
