@@ -22,7 +22,7 @@ P.S.:
 """
 
 import asyncio
-from typing import Optional, Callable, TypeVar, Any
+from typing import Optional, Callable, Any
 from pathlib import Path
 from operator import itemgetter
 from os import getenv
@@ -30,6 +30,7 @@ from dotenv import load_dotenv, find_dotenv, set_key
 from django.core.management.base import BaseCommand, CommandError, CommandParser
 from telethon import TelegramClient
 from telethon.sessions import StringSession
+from telethon.errors import rpcerrorlist
 
 ENV_STRING_SESSION_KEY = 'TELEGRAM_SESSION_STRING'
 ENV_API_ID_KEY = 'TELEGRAM_API_ID'
@@ -41,7 +42,7 @@ ENV_PATH = '/'
 
 class Command(BaseCommand):
     """Django management (manage.py) command to generate and 
-    save to .env a TelegramClient StringSession
+    save to .env a TelegramClient StringSession.
 
     Prerequisites:
     - .env and provided data that in total is enough for starting TelegramClient
@@ -81,7 +82,7 @@ class Command(BaseCommand):
         self.api_id: Optional[int] = None
         self.api_hash: Optional[str] = None
         self.phone: Optional[str] = None
-        self.password: Optional[str] = None  # <-- add this to avoid AttributeError
+        self.password: Optional[str] = None
         self.env_path: Optional[str] = None
 
     # argparse arguments
@@ -142,7 +143,7 @@ class Command(BaseCommand):
 
         # **options instead of **kwargs because of legacy
     def handle(self, *args, **options: dict[str, str]) -> None:
-        """Entrypoint: resolve input, authenticate in Telegram, save it
+        """Entrypoint: resolve input, authenticate in Telegram, save it.
 
         Structure:
         - Resolve .env path
@@ -164,13 +165,14 @@ class Command(BaseCommand):
             PermissionError: permission denied to .env file error
             OSError: error while writing to .env
             CommandError: other errors
+            Exception: this is bad, phone me if it happens: +79856455594
         """
-        # get all key (option) arguments. cool, huh?
+        # Get all key (option) arguments. cool, huh?
         force, string_session, api_id, api_hash, password, phone, env_path = \
             itemgetter('force', 'string_session', 'api_id', \
                         'api_hash', 'password', 'phone', 'env_path')(options)
 
-        # Fix env path resolution
+        # Set env path
         if env_path:
             p = Path(env_path)
             env_file = p if p.suffix == '.env' else (p / '.env')
@@ -179,15 +181,13 @@ class Command(BaseCommand):
             self.env_path = str(env_file)
         else:
             try:
-                # fix: usecwd (not usecws)
                 self.env_path = find_dotenv(raise_error_if_not_found=True, usecwd=True)
             except Exception as e:
                 raise CommandError(f'.env was not found: {e}') from e
 
-        # Always load .env once here and resolve values via helpers
         load_dotenv(self.env_path)
 
-        # Resolve all possible inputs once (CLI overrides env depending on --force/confirmation)
+        # Set inputs
         self.replace_env_data('string_session', ENV_STRING_SESSION_KEY, string_session, str, force)
         self.replace_env_data('api_id', ENV_API_ID_KEY, api_id, int, force)
         self.replace_env_data('api_hash', ENV_API_HASH_KEY, api_hash, str, force)
@@ -198,21 +198,21 @@ class Command(BaseCommand):
         if string_session:
             self.ensure_required(['api_id', 'api_hash'])
             self.set_string_session(ENV_STRING_SESSION_KEY)
-            self.start_telegram_session()
+            asyncio.run(self.start_telegram_session())
             return
 
         # If session exists in env and not forcing regeneration, start with it
         if self.string_session and not force:
             self.ensure_required(['api_id', 'api_hash'])
             self.stdout.write('TELEGRAM_SESSION found. Starting Telegram client...')
-            self.start_telegram_session()
+            asyncio.run(self.start_telegram_session())
             return
 
         # Generate a new session (no StringSession present and is --force
         self.ensure_required(['api_id', 'api_hash', 'phone'])
         asyncio.run(self.get_string_session())
         self.set_string_session(ENV_STRING_SESSION_KEY)
-        self.start_telegram_session()
+        asyncio.run(self.start_telegram_session())
 
     def replace_env_data(
             self,
@@ -245,22 +245,22 @@ class Command(BaseCommand):
                 setattr(self, att_name, getenv(env_key))
                 return
 
-        # Use provided/converted value
+        # Set provided data
         setattr(self, att_name, converted)
 
     def ensure_required(self, required: list[str]) -> None:
         """Ensure required attributes are present after resolution."""
         missing = [name for name in required if not getattr(self, name)]
         if missing:
-            raise CommandError(f'Missing required data: {", ".join(missing)}')
+            raise CommandError(f'Missing required data: {", ".join(missing)}. Please add it in .env or via -- (e.g. --{missing[0]}) in command')
 
     async def get_string_session(self) -> None:
-        '''Authentucate in TelegramClient and save StringSession in self.string_session
+        """Authentucate in TelegramClient and save StringSession in self.string_session.
 
         Raises:
             OSError: if disconnect error occurs
             CommandError: other errors
-        '''
+        """
         try:
             client = TelegramClient(StringSession(), self.api_id, self.api_hash)
         except ValueError as e:
@@ -281,11 +281,14 @@ class Command(BaseCommand):
                 raise OSError(f'Error while disconnecting TelegramClient: {e}') from e
 
     def set_string_session(self, string_session_key: str) -> None:
-        '''Set the generated StringSession in .env
+        """Set the generated StringSession in .env.
 
         Args:
-            string_session_key: 
-        '''
+            string_session_key: StringSession key name in .env
+
+        Raises:
+            
+        """
         try:
             set_key(self.env_path, string_session_key, self.string_session)
         except ValueError as e:
@@ -295,32 +298,36 @@ class Command(BaseCommand):
         except OSError as e:
             raise
 
-    def start_telegram_session(self) -> None:
+    async def start_telegram_session(self) -> None:
         """Start TelegramClient session using resolved StringSession and API creds."""
         # Use already-resolved values
         session = self.string_session
         api_id = self.api_id
         api_hash = self.api_hash
-
-        async def runner():
-            client = TelegramClient(StringSession(session), api_id, api_hash)
-            try:
-                await client.connect()
-                if not await client.is_user_authorized():
-                    # Try to login if we have phone/password (fallback to env for convenience)
-                    phone = self.phone or getenv(ENV_PHONE_KEY)
-                    password = self.password or getenv(ENV_PASSWORD_KEY)
-                    if not phone:
-                        raise CommandError('Session is not authorized and PHONE is missing.')
+        client = TelegramClient(StringSession(session), api_id, api_hash)
+        try:
+            await client.connect()
+            if not await client.is_user_authorized():
+                # Try to login if we have phone/password (fallback to env for convenience)
+                phone = self.phone or getenv(ENV_PHONE_KEY)
+                password = self.password or getenv(ENV_PASSWORD_KEY)
+                try:
                     await client.start(phone=phone, password=password)
-                    # Save refreshed session
-                    new_session = client.session.save()
-                    self.string_session = new_session
-                    set_key(self.env_path, ENV_STRING_SESSION_KEY, new_session)
-                    self.stdout.write('Telegram session authorized and updated in .env.')
-                me = await client.get_me()
-                self.stdout.write(f'Telegram session is active. Logged in as: {getattr(me, "username", None) or me.id}')
-            finally:
-                await client.disconnect()
-
-        asyncio.run(runner())
+                except ValueError as e:
+                    if not phone:
+                        raise CommandError(f'Phone not passed to client: {e}\nPass it via --phone.') from e
+                    elif not password:
+                        raise CommandError(f'Password not passed to client: {e}\nPass it via --password.') from e
+                    raise CommandError(f'Phone and password not passed to client: {e}\nPass them via --password and --phone.') from e
+                except rpcerrorlist.PasswordHashInvalidError as e:
+                    raise CommandError(f'Wrong password. Please check for typos. Quotation marks \' or \" are not needed.')
+                # Set StrinGseeion
+                self.string_session = client.session.save()
+                set_key(self.env_path, ENV_STRING_SESSION_KEY, self.string_session)
+                self.stdout.write('Telegram session authorized and updated in .env.')
+            user_ = await client.get_me()
+            self.stdout.write(f'Telegram session is active. Logged in as: {getattr(user_, "username", None) or user_.id}')
+        except Exception as e:
+            raise CommandError(f'This is bad: {e}') from e
+        finally:
+            await client.disconnect()
