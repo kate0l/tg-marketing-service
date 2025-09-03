@@ -21,6 +21,7 @@ P.S.:
     This class can be used at any time and does not require starting up anything
 """
 
+import aysncio
 from typing import Optional, Callable, TypeVar, Any
 from pathlib import Path
 from operator import itemgetter
@@ -176,15 +177,6 @@ class Command(BaseCommand):
             except Exception as e:
                 raise CommandError(f'.env was not found: {e}') from e
 
-        load_dotenv(self.env_path)
-
-        # check if provided data present in .env and ask if want to replace data in .env
-        # there are no ' ' spaces in any data, so safely remove it to fix typos
-        self.replace_env_data('string_session', ENV_STRING_SESSION_KEY, string_session, str, force)
-        self.replace_env_data('api_id', ENV_API_ID_KEY, api_id, int, force)
-        self.replace_env_data('api_hash', ENV_API_HASH_KEY, api_hash, str, force)
-        self.replace_env_data('phone', ENV_PHONE_KEY, phone, str, force)
-
         # If --string-session provided, just save it and exit
         if string_session:
             self.string_session = string_session  # ensure it is used by set_string_session
@@ -196,12 +188,20 @@ class Command(BaseCommand):
             self.stdout.write('TELEGRAM_SESSION already present. Use --force to regenerate.')
             return
 
+        load_dotenv(self.env_path)
+
+        # Check if provided data present in .env and ask if want to replace data in .env
+        # There are no ' ' spaces in any data, so safely remove it to fix typos
+        self.replace_env_data('string_session', ENV_STRING_SESSION_KEY, string_session, str, force)
+        self.replace_env_data('api_id', ENV_API_ID_KEY, api_id, int, force)
+        self.replace_env_data('api_hash', ENV_API_HASH_KEY, api_hash, str, force)
+        self.replace_env_data('phone', ENV_PHONE_KEY, phone, str, force)
+
         # Check if enough to generate StringSession (requires api_id, api_hash, phone)
         missing = [name for name, val in [('api_id', self.api_id), ('api_hash', self.api_hash), ('phone', self.phone)] if not val]
         if missing:
             raise CommandError(f'Missing required data: {", ".join(missing)}')
 
-        import asyncio
         asyncio.run(self.get_string_session())
         self.set_string_session(ENV_STRING_SESSION_KEY)
 
