@@ -10,7 +10,7 @@ charset-normalizer==3.4.2
     # via requests
 dj-database-url==3.0.1
     # via hexlet-price-tracker (pyproject.toml)
-django==5.2.4
+django==5.2.6
     # via
     #   hexlet-price-tracker (pyproject.toml)
     #   dj-database-url
