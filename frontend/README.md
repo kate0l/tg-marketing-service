@@ -43,4 +43,3 @@ npm run build
 P.S. Вы должны находиться в папке frontend
 
 см. другие скрипты в [`package.json`](package.json)
-.
