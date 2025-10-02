@@ -88,10 +88,14 @@
                 {% endif %}
             </div>
         </div>
-    </header>
+    {% endif %}
+    </div>
+</header>
 </div>
 
 <div class="container wrapper flex-grow-1">
+    {% block inertia %}{% endblock %}
+
     {% include "message.html" %}
 
     {% block content %}

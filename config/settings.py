@@ -30,10 +30,11 @@ TELEGRAM_API_HASH = os.getenv('TELEGRAM_API_HASH')
 TELEGRAM_SESSION_STRING = os.getenv('TELEGRAM_SESSION_STRING')
 
 # Telegram settings check
-if not TELEGRAM_API_ID or not TELEGRAM_API_HASH or not TELEGRAM_SESSION_STRING:
+# SESSIONS_STRING is not necessary, because working with sole db can be too
+if not TELEGRAM_API_ID or not TELEGRAM_API_HASH:
     raise ImproperlyConfigured(
         "Нет конфигурации для Telegram API. "
-        "Установи TELEGRAM_API_ID, TELEGRAM_API_HASH, TELEGRAM_SESSION_STRING"
+        "Установи TELEGRAM_API_ID, TELEGRAM_API_HASH"
     )
 
 # Celery settings
@@ -73,6 +74,8 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    
+    'inertia',
 
     'widget_tweaks',
     'django_bootstrap5',
@@ -110,6 +113,7 @@ MIDDLEWARE = [
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
     'allauth.account.middleware.AccountMiddleware',
+    'inertia.middleware.InertiaMiddleware',
 ]
 
 
@@ -231,4 +235,14 @@ else:
     ALLOWED_HOSTS = ['127.0.0.1', 'localhost']
     # Email settings for development - emails will be printed to console
     EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
+    
+
+# Inertia settings    
+    
+INERTIA_LAYOUT = "base.html"
+CSRF_HEADER_NAME = 'HTTP_X_XSRF_TOKEN'
+CSRF_COOKIE_NAME = 'XSRF-TOKEN'
+STATICFILES_DIRS = [
+    BASE_DIR / "frontend" / "public",
+]
 
