@@ -5,12 +5,14 @@ import ComparePages from '../components/pages/ComparePages';
 import CompareProducts from '../components/pages/CompareProducts';
 import MassParsing from '../components/pages/MassParsing';
 import Auth from '@/components/pages/Auth';
+import Channels from '@/components/pages/Channels';
 
 const routes = [
   { path: '/', element: <Home /> },
   { path: '/compare-pages', element: <ComparePages /> },
   { path: '/compare-products', element: <CompareProducts /> },
   { path: '/mass-parsing', element: <MassParsing /> },
+  { path: '/channels', element: <Channels /> },
   { path: '/auth', element: <Auth /> },
 ];
 
