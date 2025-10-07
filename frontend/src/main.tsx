@@ -39,8 +39,6 @@ document.addEventListener('DOMContentLoaded', () => {
           return import('./components/ui/FormRegistration.tsx');
         case 'Tooltip':
           return import('./components/ui/Tooltip.tsx');
-        case 'UserProfile':
-          return import('./components/pages/UserProfile.tsx');
 
         default: throw new Error(`Page ${name} not found`);
       }
