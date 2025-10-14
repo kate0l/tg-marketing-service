@@ -11,7 +11,7 @@ SPA веб-приложение. Единый портал для анализа
 
 - Typescript
 - React 19
-- Redux Toolkit: упраление состоянием
+- Redux Toolkit: управление состоянием
 - React Router: клиентский роутинг
 - React Hook Form: формы
 - Vite
