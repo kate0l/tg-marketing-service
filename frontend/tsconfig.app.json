@@ -30,5 +30,5 @@
     "noFallthroughCasesInSwitch": true,
     // "noUncheckedSideEffectImports": true, // вызывает конфликт с typescript-eslint
   },
-  "include": ["src"]
+  "include": ["src", "fixtures/channelsCollection.ts"]
 }

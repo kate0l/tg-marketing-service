@@ -1,21 +1,12 @@
 import React from 'react';
-
-interface Channel {
-  id: number;
-  name: string;
-  subscribers: number;
-  category: string;
-  verified: boolean;
-  country: string;
-  imageUrl: string;
-}
+import type { Channel } from '@/types/channel';
 
 interface ChannelProps {
   channel: Channel;
   height: string;
 }
 
-const Channel: React.FC<ChannelProps> = ({ channel, height }) => {
+const ChannelCard: React.FC<ChannelProps> = ({ channel, height }) => {
   const { name, subscribers, imageUrl } = channel;
   return (
     <div
@@ -45,4 +36,4 @@ const Channel: React.FC<ChannelProps> = ({ channel, height }) => {
   );
 };
 
-export default Channel;
+export default ChannelCard;

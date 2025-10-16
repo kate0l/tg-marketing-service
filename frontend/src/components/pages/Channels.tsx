@@ -9,13 +9,15 @@ import {
 import { useMediaQuery } from 'react-responsive';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import Channel from '../ui/Channel';
-// import channels from '../../constants/channelsCollection.ts';
+import ChannelCard from '../ui/ChannelCard.tsx';
+import type { Channel, ChannelsProps } from '@/types/channel.ts';
 import formatNumberShort from '@/utils/formatNumberShort.ts';
-
-interface ChannelsProps {
-  channels: Channel[];
-}
+import {
+  reduceChannelsByCategory,
+  countChannelsByCategory,
+  mapCategoryCountEntry,
+} from '@/utils/reduceChannels.ts';
+// import channels from '../../../fixtures/channelsCollection.ts';
 
 const Channels: React.FC<ChannelsProps> = ({ channels }) => {
   const isMobile = useMediaQuery({ maxWidth: 767 });
@@ -24,30 +26,14 @@ const Channels: React.FC<ChannelsProps> = ({ channels }) => {
     ...new Set(channels.map(({ country }) => country)),
   ];
 
-  const channelsByCategory = channels.reduce<Record<string, Channel[]>>(
-    (acc, channel) => {
-      if (!acc[channel.category]) {
-        acc[channel.category] = [];
-      }
-      acc[channel.category].push(channel);
-      return acc;
-    },
-    {}
+  const channelsByCategory = Object.entries(
+    channels.reduce<Record<string, Channel[]>>(reduceChannelsByCategory, {})
   );
 
-  const categoriesCountObj: Record<string, number> = channels.reduce(
-    (acc, { category }) => {
-      acc[category] = (acc[category] || 0) + 1;
-      return acc;
-    },
-    {} as Record<string, number>
-  );
+  const categoriesCountObj = channels.reduce(countChannelsByCategory, {});
 
   const categoriesCounter = Object.entries(categoriesCountObj).map(
-    ([category, count]) => ({
-      category,
-      count,
-    })
+    mapCategoryCountEntry
   );
 
   const categories =
@@ -99,7 +85,7 @@ const Channels: React.FC<ChannelsProps> = ({ channels }) => {
         <ul className="flex flex-col flex-wrap md:flex-nowrap md:flex-row items-center justify-center gap-5 py-10">
           {channels.slice(0, 3).map((channel) => (
             <li key={channel.id} className="w-70 md:w-1/3 xl:w-100">
-              <Channel channel={channel} height="25" />
+              <ChannelCard channel={channel} height="25" />
             </li>
           ))}
         </ul>
@@ -125,7 +111,7 @@ const Channels: React.FC<ChannelsProps> = ({ channels }) => {
             <ul className="w-full grid md:grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
               {channelsForVerif.map((channel) => (
                 <li key={channel.id} className="flex-1 w-60 md:w-70 lg:w-full">
-                  <Channel channel={channel} height="20" />
+                  <ChannelCard channel={channel} height="20" />
                 </li>
               ))}
             </ul>
@@ -157,7 +143,7 @@ const Channels: React.FC<ChannelsProps> = ({ channels }) => {
           </div>
         </div>
         <ul>
-          {Object.entries(channelsByCategory).map(([category, chList]) => (
+          {channelsByCategory.map(([category, chList]) => (
             <li key={category}>
               <div className="flex flex-col my-5 items-center md:items-start">
                 <div className="w-full flex flex-row items-center justify-between py-5">
@@ -173,12 +159,12 @@ const Channels: React.FC<ChannelsProps> = ({ channels }) => {
                     {isMobile || isTablet
                       ? chList.slice(0, isMobile ? 2 : 3).map((channel) => (
                           <li key={channel.id} className="w-60 md:w-full">
-                            <Channel channel={channel} height="20" />
+                            <ChannelCard channel={channel} height="20" />
                           </li>
                         ))
                       : chList.slice(0, 4).map((channel) => (
                           <li key={channel.id} className="w-60 md:w-full">
-                            <Channel channel={channel} height="20" />
+                            <ChannelCard channel={channel} height="20" />
                           </li>
                         ))}
                   </ul>
