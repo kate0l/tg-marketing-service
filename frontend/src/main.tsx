@@ -1,10 +1,10 @@
-import { StrictMode } from 'react';
-import { createRoot } from 'react-dom/client';
-import './styles/index.css';
-import App from './App.tsx';
-import 'vite/modulepreload-polyfill';
-import { createInertiaApp } from '@inertiajs/react';
-import { InertiaProgress } from '@inertiajs/progress';
+import { StrictMode } from 'react'
+import { createRoot } from 'react-dom/client'
+import './styles/index.css'
+import App from './app/App.tsx'
+import 'vite/modulepreload-polyfill'
+import { createInertiaApp } from '@inertiajs/react'
+import { InertiaProgress } from '@inertiajs/progress'
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
