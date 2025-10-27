@@ -1,5 +1,6 @@
 import React from 'react';
 import ScreenshotsDemo from '../ui/ScreenshotsDemo';
+import screenshotsDemoColl from '@/fixtures/screenshotsDemoCollection';
 
 const Home: React.FC = () => {
   return (
@@ -22,7 +23,7 @@ const Home: React.FC = () => {
 
       <div className="w-full bg-gray-50">
         <div className="max-w-xs md:max-w-2xl lg:max-w-4xl xl:max-w-7xl mx-auto py-20 px-5">
-          <ScreenshotsDemo />
+          <ScreenshotsDemo screenshots={screenshotsDemoColl}/>
         </div>
       </div>
     </div>
